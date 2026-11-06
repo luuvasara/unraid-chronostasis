@@ -2,6 +2,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 (async () => {
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] }), p = await b.newPage(), miss = new Set(), seen = new Set();
+  await p.addInitScript(() => { try { localStorage.removeItem('chronostasis-walk'); } catch (e) { /* none */ } }); // every run starts with no answers
   const scan = async () => { for (const r of await p.$$eval('button,select,a[download],a[href*="Browse"],#cs-pick', e => e.filter(x => x.offsetParent && !x.closest('#menu,#header,#footer,.nav')).map(x => [(x.textContent || x.id).trim().slice(0, 40), !!(x.title || (x.closest('label') && x.closest('label').title))]))) { seen.add(r[0]); if (!r[1]) miss.add(r[0]); } };
   for (const w of ['#cs-walkstart', '#cs-walkother']) {
     await p.goto('http://127.0.0.1:18811/'); await p.waitForSelector('.cs-app'); await scan();

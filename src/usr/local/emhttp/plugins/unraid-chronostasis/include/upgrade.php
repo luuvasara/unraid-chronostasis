@@ -304,6 +304,36 @@ function cs_upgrade_retry(string $app, string $which): array {
     return ['url' => cs_form_url($open)];
   });
 }
+/* Backups of apps with no saved settings and no container left, newest first. An app with a job on screen is not one. */
+function cs_gone_backups(array $jobs): array {
+  $out = [];
+  $root = rtrim(cs_path('config'), '/') . '/backups';
+  foreach ((array)@scandir($root) as $app) {
+    if (!is_string($app) || !cs_safe_name($app) || !is_dir("$root/$app")) continue;
+    if (in_array($jobs[$app]['phase'] ?? '', ['form', 'working', 'failed'], true)) continue;
+    if (is_file(rtrim(cs_path('templates'), '/') . "/my-$app.xml") || cs_container($app) !== null) continue;
+    $files = [];
+    foreach ((array)glob("$root/$app/my-*.xml") as $p) $files[] = ['file' => basename($p), 'path' => $p, 'taken' => (int)@filemtime($p)];
+    if (!$files) continue;
+    usort($files, function ($a, $b) { return $b['taken'] <=> $a['taken'] ?: strcmp($b['file'], $a['file']); });
+    $out[] = ['app' => $app, 'files' => $files];
+  }
+  return $out;
+}
+/* Opens a gone app's backup in Unraid's form. Nothing is written until Apply. */
+function cs_upgrade_putback(string $app, string $file): array {
+  if (!cs_safe_name($app) || basename($file) !== $file || !preg_match('/^my-.+\.xml$/', $file)) return ['error' => 'invalid app'];
+  $open = rtrim(cs_path('config'), '/') . "/backups/$app/$file";
+  if (!is_file($open)) return ['error' => 'The file is not there any more: ' . $open];
+  return cs_jobs_locked(function (array &$jobs) use ($app, $open) {
+    $saved = rtrim(cs_path('templates'), '/') . "/my-$app.xml";
+    if (is_file($saved) || cs_container($app) !== null) return ['error' => 'This app is back already. Press Check now.'];
+    $j = ['file' => "my-$app.xml", 'backup' => $open, 'taken' => (int)@filemtime($open), 'savedStamp' => '', 'attempt' => 'old', 'putback' => true];
+    cs_baseline($j, $app, $saved);
+    $jobs[$app] = $j;
+    return ['url' => cs_form_url($open)];
+  });
+}
 function cs_upgrade_cancel(string $app): bool {
   if (!cs_safe_name($app)) return false;
   return cs_jobs_locked(function (array &$jobs) use ($app) {
@@ -444,7 +474,7 @@ function cs_jobs_state(): array {
     $out = [];
     foreach ($jobs as $app => &$j) {
       cs_job_step($j, (string)$app);
-      $v = array_intersect_key($j, array_flip(['phase', 'attempt', 'backup', 'taken', 'when', 'container', 'errorFrom', 'differs', 'outcome']));
+      $v = array_intersect_key($j, array_flip(['phase', 'attempt', 'backup', 'taken', 'when', 'container', 'errorFrom', 'differs', 'outcome', 'putback']));
       $v['app'] = (string)$app;
       $v['error'] = ($j['phase'] ?? '') === 'failed' ? (string)@file_get_contents(cs_error_file((string)$app)) : '';
       $out[] = $v;

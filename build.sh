@@ -26,6 +26,7 @@ UNTRACKED=$(git -C "$HERE" ls-files --others --exclude-standard -- src)
 [ -z "$UNTRACKED" ] || { echo "FATAL: untracked files under src/:"; echo "$UNTRACKED"; exit 1; }
 (cd "$HERE/src" && git ls-files -z --cached -- . | xargs -0 cp -a --parents -t "$ST/")
 cp "$HERE/CHANGELOG.md" "$ST/$P/CHANGELOG.md"
+cp "$HERE/LICENSE" "$ST/$P/LICENSE"
 find "$ST" -type d -exec chmod 755 {} +
 find "$ST" -type f -exec chmod 644 {} +
 chmod 755 "$ST/$P/scripts/chronostasis"

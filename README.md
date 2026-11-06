@@ -8,6 +8,28 @@ Chronostasis compares old settings with the template in Community Applications, 
 
 A difference is not always a problem, and the template can be the older side.
 
+## Screenshots
+
+The check: how many differences to look at, and two ways through them.
+
+![The check](docs/screenshots/check.png)
+
+One difference, with its question.
+
+![One difference](docs/screenshots/question.png)
+
+Finish: upgrade, report, both or neither.
+
+![Finish](docs/screenshots/finish.png)
+
+Upgrade: old settings against upgraded settings, before Unraid's form opens.
+
+![Upgrade](docs/screenshots/upgrade.png)
+
+Report: the text to copy, with no values in it.
+
+![Report](docs/screenshots/report.png)
+
 ## What it shows, per app
 
 Counted as something to check:
@@ -38,6 +60,8 @@ A different image or a template address that has moved is never changed here. Th
 
 Finish offers two separate next steps, each one app at a time. Your answers and the renames the template confirms are listed there, so you can see what goes where.
 
+Your answers stay in this browser if you reload the page, and the walk continues where you left off. They hold names only, no values. Forget my answers clears them.
+
 ### Upgrade
 
 You see old settings above and upgraded settings below, and what the form would change on its own. Review in Unraid's form saves old settings to the flash drive first, then opens the form filled in, so nothing has to be typed or copied. Check it and press Apply. Backups are kept until you delete them.
@@ -47,6 +71,8 @@ If Apply fails, Unraid will already have removed the container. That is how Unra
 Unraid does not keep every error. To find it, Chronostasis can check the image again and create a temporary container with only the image and the extra parameters. That container never starts and is removed at once.
 
 Compose containers are left alone. An app that stays on its own version says so: the comparison is with the current template, which may describe a newer version.
+
+Backups stay on the flash drive. If an app's container and saved settings are gone, its backups are listed on the page and open in Unraid's form.
 
 Values are shown only on your own server; they are never in reports or in anything you copy or paste.
 

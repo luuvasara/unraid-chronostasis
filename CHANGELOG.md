@@ -2,6 +2,13 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.06h
+- Your answers survive a page reload, and the walk continues where you left off. They stay in this browser and hold names only.
+- Forget my answers clears them.
+- Backups of apps no longer on the server are listed, and open in Unraid's form.
+- A field whose required flag and default both changed is one row.
+- Upgrade counts a confirmed rename once you have seen it.
+
 ## 2026.11.06g
 - An app upgraded before can be upgraded again.
 

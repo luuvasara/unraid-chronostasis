@@ -352,12 +352,14 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
     if (!isset($L[$k]) || $na($f)) continue;
     $l = $L[$k];
     if (!empty($l['disabled'])) continue;
-    if ($f['required'] !== $l['required']) {
-      $r['findings'][] = cs_finding('required', $k, $f['label'], (string)(int)$f['required'], ['type' => $f['type'], 'required' => $f['required'], 'mask' => $f['mask'] || $l['mask']]);
-    }
     /* Paths are left out: Unraid rewrites their default to the local appdata location.
        A saved copy with no default says nothing about what it was based on, so it is not compared. */
-    if (strtolower($f['type']) !== 'path' && !$f['mask'] && !$l['mask'] && $l['default'] !== sha1('') && $f['default'] !== $l['default']) {
+    $otherDefault = strtolower($f['type']) !== 'path' && !$f['mask'] && !$l['mask'] && $l['default'] !== sha1('') && $f['default'] !== $l['default'];
+    /* one field is one row: a default that changed along with the required flag goes in the same finding */
+    if ($f['required'] !== $l['required']) {
+      $r['findings'][] = cs_finding('required', $k, $f['label'], (int)$f['required'] . ($otherDefault ? $f['default'] : ''), ['type' => $f['type'], 'required' => $f['required'], 'mask' => $f['mask'] || $l['mask']]
+        + ($otherDefault ? ['default' => $f['shownDefault'], 'defaultChanged' => true] : []));
+    } elseif ($otherDefault) {
       $r['findings'][] = cs_finding('default', $k, $f['label'], $f['default'], ['type' => $f['type'], 'default' => $f['shownDefault'], 'mask' => false]);
     }
   }

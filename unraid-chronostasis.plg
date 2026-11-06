@@ -2,12 +2,12 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "unraid-chronostasis">
   <!ENTITY author    "Chronostasis project">
-  <!ENTITY version   "2026.11.06g">
+  <!ENTITY version   "2026.11.06h">
   <!ENTITY gitURL    "https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
   <!ENTITY pkg       "&name;-&version;-x86_64-1.txz">
   <!ENTITY pkgURL    "&gitURL;/packages/&pkg;">
-  <!ENTITY md5       "b324ebccd22e8698fe6c4edcf7cafd20">
+  <!ENTITY md5       "c831add79759d0eb5db14994373b6c5f">
 ]>
 <!-- Compares saved Docker templates with Community Applications and helps upgrade them through Unraid's form.
      Bump &version; on EVERY change (YYYY.MM.DD plus an optional letter); build.sh fills in &md5; and makes CHANGELOG.md from <CHANGES>, the one place to write the changes.
@@ -16,6 +16,12 @@
         launch="Settings/Chronostasis" pluginURL="&pluginURL;" support="https://github.com/luuvasara/unraid-chronostasis/issues">
 
 <CHANGES>
+###2026.11.06h
+- Your answers survive a page reload, and the walk continues where you left off. They stay in this browser and hold names only.
+- Forget my answers clears them.
+- Backups of apps no longer on the server are listed, and open in Unraid's form.
+- A field whose required flag and default both changed is one row.
+- Upgrade counts a confirmed rename once you have seen it.
 ###2026.11.06g
 - An app upgraded before can be upgraded again.
 ###2026.11.06f

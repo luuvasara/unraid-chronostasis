@@ -46,13 +46,17 @@ if ($a === 'share') {
   $report = cs_apply_dismissed(cs_read_json(cs_path('cache') . '/report.json'), cs_read_json(cs_path('config') . '/dismissed.json'));
   cs_out(200, ['ok' => true, 'text' => cs_share_text($report, array_filter(explode(',', $ids)), $maps, cs_plugin_version(), cs_unraid_version(), array_filter(explode(',', $asks)))]);
 }
-if (in_array($a, ['plan', 'open', 'jobs', 'retry', 'cancel'], true)) {
+if (in_array($a, ['plan', 'open', 'jobs', 'retry', 'cancel', 'putback'], true)) {
   require_once __DIR__ . '/detect.php';
   require_once __DIR__ . '/upgrade.php';
-  if ($a === 'jobs') cs_out(200, ['ok' => true, 'jobs' => cs_jobs_state()]);
+  if ($a === 'jobs') { $js = cs_jobs_state(); $by = []; foreach ($js as $j) $by[$j['app']] = $j; cs_out(200, ['ok' => true, 'jobs' => $js, 'gone' => cs_gone_backups($by)]); }
   $app = is_string($_POST['app'] ?? null) ? $_POST['app'] : '';
   if ($a === 'retry') {
     $r = cs_upgrade_retry($app, is_string($_POST['which'] ?? null) ? $_POST['which'] : '');
+    cs_out(isset($r['url']) ? 200 : 409, isset($r['url']) ? ['ok' => true] + $r : ['ok' => false] + $r);
+  }
+  if ($a === 'putback') {
+    $r = cs_upgrade_putback($app, is_string($_POST['file'] ?? null) ? $_POST['file'] : '');
     cs_out(isset($r['url']) ? 200 : 409, isset($r['url']) ? ['ok' => true] + $r : ['ok' => false] + $r);
   }
   if ($a === 'cancel') { $ok = cs_upgrade_cancel($app); cs_out($ok ? 200 : 409, ['ok' => $ok]); }

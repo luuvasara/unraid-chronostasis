@@ -10,7 +10,7 @@
   var filter = document.getElementById('cs-filter'), all = document.getElementById('cs-all');
   var last = null, open = {}, openOthers = {}, timer = null;
   var walk = document.getElementById('cs-walk'), walkBtn = document.getElementById('cs-walkstart'), otherBtn = document.getElementById('cs-walkother');
-  var pos = -1, walkOthers = false, picked = {}, mappings = [], chosen = {}, previewRun = 0, walkList = [], answers = {}, rejected = {}, away = {}, showPair = {}, seenRenames = {}, doneHere = {};
+  var pos = -1, walkOthers = false, picked = {}, mappings = [], chosen = {}, previewRun = 0, walkList = [], answers = {}, rejected = {}, away = {}, showPair = {}, seenRenames = {}, doneHere = {}, gone = [], resumed = false, restored = false;
   var jobsEl = document.getElementById('cs-jobs'), jobs = {}, planApps = [], jobTimer = null, polling = false, endView = 'hub', endPos = 0;
 
   /* what pressing a control does, keyed by its label; the unit test checks that every button label is here */
@@ -37,6 +37,8 @@
     'Add mapping': 'Adds this rename to the report at Finish.',
     'Copy': 'Copies the text. The plugin sends nothing; you post it where you choose.',
     'Back to the differences': 'Back to the last difference. Your answers are kept.',
+    'Forget my answers': 'Clears your answers from this browser and closes this. What you dismissed stays dismissed. Nothing else changes.',
+    'Open in Unraid\'s form': 'Opens this backup in Unraid\'s form. Nothing happens until you press Apply there.',
     'Review in Unraid\'s form': 'Saves the old settings first, then opens Unraid\'s form in a new tab with the upgraded settings.' + APPLY_ONLY,
     'I did not press Apply': 'Stops waiting for Apply and removes the temporary settings. The container is not touched.',
     'Try again with the upgraded settings': 'Opens Unraid\'s form with the upgraded settings, where you can tweak them.' + APPLY_ONLY,
@@ -89,7 +91,7 @@
     var t = f.type ? f.type + ' ' + f.label : f.label;
     if (f.kind === 'new' && f.required) t += ' (required)';
     if (f.kind === 'required') t += f.required ? ': now required' : ': no longer required';
-    if ((f.kind === 'default' || f.kind === 'new') && f.default) t += ', template default ' + f.default;
+    if ((f.kind === 'default' || f.kind === 'new' || f.defaultChanged) && f.default) t += ', template default ' + f.default;
     return t;
   }
   function countOf(a, k) { return a.findings.filter(function (f) { return f.check && f.kind === k; }).length; }
@@ -317,7 +319,7 @@
       else below = ['Template', tpl.label, f.mask ? 'hidden' : f.default || (f.required ? 'you fill this in' : 'empty'), f.mask || !f.default];
       cmp(box, cmpHead(one.type), [top, below]);
       if (evidence) box.appendChild(el('p', 'cs-evidence', evidence));
-      if (f.kind === 'default') box.appendChild(el('p', 'cs-muted', 'The template default is now ' + (f.default || 'empty') + '. The value in old settings stays.'));
+      if (f.kind === 'default' || f.defaultChanged) box.appendChild(el('p', 'cs-muted', 'The template default is now ' + (f.default || 'empty') + '. The value in old settings stays.'));
     }
     if (!saved) return paint();
     if (hidden) return paint('hidden');
@@ -373,11 +375,14 @@
   function walkDraw() {
     previewRun++;
     walk.textContent = '';
+    saveWalk();
     var list2 = walkItems();
     if (pos < 0) { walk.hidden = true; return; }
     walk.hidden = false;
     if (pos >= list2.length) return walkEnd(list2);
     var it = list2[pos], a = it.a, f = it.f, ans = answers[f.id];
+    if (f.kind === 'renamed') { seenRenames[f.id] = a.name + ': ' + f.from + ' to ' + f.label + ': rename the template confirms'; saveWalk(); }
+    if (resumed) walk.appendChild(el('p', 'cs-muted', 'Picked up where you left off. Your answers are kept in this browser, and they hold names only, no values.'));
     walk.appendChild(el('p', 'cs-muted', (walkOthers ? 'Other difference ' : 'Issue ') + (pos + 1) + ' of ' + list2.length));
     /* a field issue says it in the comparison and the question; the rest keep their text */
     var asks = f.kind === 'new' || f.kind === 'yours';
@@ -470,7 +475,7 @@
     if (f.kind !== 'yours') {
       var share = el('label', 'cs-sharepick'), tick = el('input'); tick.type = 'checkbox'; tick.id = 'cs-pick'; tick.checked = !!picked[f.id];
       share.title = 'A tick puts this difference in the report you can copy at Finish. It changes nothing in the container.';
-      tick.addEventListener('change', function () { picked[f.id] = tick.checked ? it : false; });
+      tick.addEventListener('change', function () { picked[f.id] = tick.checked ? it : false; saveWalk(); });
       share.appendChild(tick); share.appendChild(document.createTextNode(' Add to the report'));
       walk.appendChild(share);
     }
@@ -542,7 +547,7 @@
     rep.addEventListener('click', function () { endView = 'report'; endPos = 0; walkDraw(); });
     rep.textContent = 'Report ' + reps.length + (reps.length === 1 ? ' app' : ' apps'); rep.disabled = !reps.length;
     walk.appendChild(box);
-    walk.appendChild(endBar([['Back to the differences', function () { pos = Math.max(0, list2.length - 1); walkDraw(); }]]));
+    walk.appendChild(endBar([['Back to the differences', function () { pos = Math.max(0, list2.length - 1); walkDraw(); }], ['Forget my answers', forgetWalk]]));
     post({ action: 'plan', answers: answerList() }).then(function (r) {
       planApps = r.ok ? r.apps : [];
       var n = upgrades().length;
@@ -664,20 +669,20 @@
   }
   function jobButtons(parent, job, err) {
     var two = el('div', 'cs-two');
-    [['upgraded', 'Try again with the upgraded settings'], ['old', 'Go back to the old settings']].forEach(function (b) {
+    [['upgraded', 'Try again with the upgraded settings'], ['old', 'Go back to the old settings']].filter(function (b) { return !job.putback || b[0] === 'old'; }).forEach(function (b) {
       var x = el('button', 'cs-answer', b[1]); x.type = 'button'; x.id = 'cs-job-' + b[0];
       x.addEventListener('click', function () { err.textContent = ''; toForm({ action: 'retry', app: job.app, which: b[0] }, function (t) { err.textContent = t; }); });
       two.appendChild(x);
     });
     parent.appendChild(two); parent.appendChild(err);
-    parent.appendChild(el('p', '', BOTH_OPEN));
+    if (!job.putback) parent.appendChild(el('p', '', BOTH_OPEN));
   }
   function failedBox(job) {
     var w = el('div', 'cs-walk'), box = el('div', 'cs-box'), old = job.attempt === 'old';
     var holds = old ? 'the old settings' : 'the upgraded settings';
-    w.appendChild(el('h3', '', job.app + (old ? ': going back failed too' : ': Apply failed')));
-    var q = { created: old ? 'Apply failed with the old settings as well. The container was created but did not start.' : 'The container was created with the upgraded settings but did not start.',
-      missing: old ? 'Apply failed with the old settings as well. The container is missing.' : 'The container is missing. Unraid now holds the upgraded settings.',
+    w.appendChild(el('h3', '', job.app + (old && !job.putback ? ': going back failed too' : ': Apply failed')));
+    var q = { created: job.putback ? 'The container was created with the old settings but did not start.' : old ? 'Apply failed with the old settings as well. The container was created but did not start.' : 'The container was created with the upgraded settings but did not start.',
+      missing: job.putback ? 'There is still no container.' : old ? 'Apply failed with the old settings as well. The container is missing.' : 'The container is missing. Unraid now holds the upgraded settings.',
       stopped: 'The container started and then stopped. Unraid now holds ' + holds + '.',
       unchanged: 'The container was not changed. Unraid now holds ' + holds + '.' }[job.container];
     box.appendChild(el('p', 'cs-question', q));
@@ -732,6 +737,55 @@
       else if (j.phase === 'working') jobsEl.appendChild(plainBox(j, 'Apply was pressed. Waiting for Unraid to finish.', false));
       else if (j.phase === 'form' && !onFinish) jobsEl.appendChild(plainBox(j, 'Unraid\'s form is open with these settings. Nothing has happened yet.', true));
     });
+    drawGone();
+  }
+  function drawGone() {
+    if (!gone.length) return;
+    var box = el('div', 'cs-gone'); box.id = 'cs-gone';
+    box.appendChild(el('h4', '', 'Backups of apps no longer on this server'));
+    box.appendChild(el('p', 'cs-muted', 'Old settings saved before an upgrade. The container and its saved settings are gone. Opening one shows it in Unraid\'s form, and nothing happens until you press Apply there.'));
+    var ul = el('ul');
+    gone.forEach(function (g) {
+      g.files.forEach(function (x) {
+        var li = el('li', '', g.app + ': ' + new Date(x.taken * 1000).toLocaleString() + ' '), b = el('button', 'cs-mini', 'Open in Unraid\'s form'), err = el('span', 'cs-err');
+        b.type = 'button'; b.title = TIPS['Open in Unraid\'s form'];
+        b.addEventListener('click', function () { toForm({ action: 'putback', app: g.app, file: x.file }, function (t) { err.textContent = t; }); });
+        li.appendChild(b); li.appendChild(err); li.appendChild(el('div', 'cs-muted', x.path)); ul.appendChild(li);
+      });
+    });
+    box.appendChild(ul); jobsEl.appendChild(box);
+  }
+  /* Answers stay in this browser across a reload. They hold key names and finding ids, never a value. */
+  var WALK_KEY = 'chronostasis-walk';
+  function saveWalk() {
+    if (!restored) return;
+    try {
+      localStorage.setItem(WALK_KEY, JSON.stringify({ answers: answers, mappings: mappings, rejected: rejected, away: away, chosen: chosen, seenRenames: seenRenames,
+        picked: Object.keys(picked).filter(function (k) { return picked[k]; }), walkOthers: walkOthers, pos: pos }));
+    } catch (e) { /* no storage here: answers last until the page closes */ }
+  }
+  function restoreWalk() {
+    restored = true;
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(WALK_KEY) || 'null'); } catch (e) { s = null; }
+    var apps = last && last.report && last.report.apps;
+    if (!s || !apps) return;
+    var known = {}, items = {};
+    apps.forEach(function (a) { a.findings.concat(a.dismissed || []).forEach(function (f) { known[f.id] = true; items[f.id] = { a: a, f: f }; }); });
+    function keep(o) { var out = {}; Object.keys(o || {}).forEach(function (k) { if (known[k]) out[k] = o[k]; }); return out; }
+    answers = keep(s.answers); away = keep(s.away); chosen = keep(s.chosen); seenRenames = keep(s.seenRenames); rejected = s.rejected || {};
+    mappings = (s.mappings || []).filter(function (m) { return answers[m.forId]; });
+    (s.picked || []).forEach(function (k) { if (items[k]) picked[k] = items[k]; });
+    if (!(s.pos >= 0)) return;
+    walkOthers = !!s.walkOthers; walkList = issues();
+    if (!walkList.length && !Object.keys(answers).length) return;
+    pos = Math.min(s.pos, walkItems().length); resumed = true;
+    walkDraw();
+  }
+  function forgetWalk() {
+    answers = {}; mappings = []; rejected = {}; away = {}; chosen = {}; picked = {}; seenRenames = {}; pos = -1; endView = 'hub'; resumed = false;
+    try { localStorage.removeItem(WALK_KEY); } catch (e) { /* nothing was kept */ }
+    walkDraw();
   }
   function pollJobs() {
     if (polling) return Promise.resolve();
@@ -742,6 +796,8 @@
       var before = jobs, now = {}, changed = false;
       r.jobs.forEach(function (j) { now[j.app] = j; });
       jobs = now;
+      var goneNow = r.gone || [];
+      if (JSON.stringify(goneNow) !== JSON.stringify(gone)) { gone = goneNow; changed = true; }
       Object.keys(now).forEach(function (k) {
         var was = before[k] || {}, is = now[k];
         if (was.phase !== is.phase || was.error !== is.error || was.container !== is.container) changed = true;
@@ -786,12 +842,12 @@
     });
   });
   function startWalk(rest) {
-    walkOthers = rest; walkList = issues(); pos = 0; doneHere = {};
-    walkList.forEach(function (it) { if (it.f.kind === 'renamed') seenRenames[it.f.id] = it.a.name + ': ' + it.f.from + ' to ' + it.f.label + ': rename the template confirms'; });
+    walkOthers = rest; walkList = issues(); pos = 0; doneHere = {}; resumed = false;
     walkDraw(); walk.scrollIntoView();
   }
   walkBtn.addEventListener('click', function () { startWalk(false); });
   otherBtn.addEventListener('click', function () { startWalk(true); });
   all.addEventListener('change', draw);
-  load().then(pollJobs);
+  window.addEventListener('pagehide', saveWalk);
+  load().then(function () { restoreWalk(); return pollJobs(); });
 })();

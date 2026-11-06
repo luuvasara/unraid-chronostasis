@@ -149,5 +149,22 @@ t(cs_docker_error("docker: Error response from daemon: x\nRun 'docker run --help
 t(!cs_safe_name('../x') && !cs_safe_name('a/b') && cs_safe_name('film.shelf_1'), 'names with a path are refused');
 t(cs_upgrade_retry('../../etc', 'old')['error'] !== '' && cs_upgrade_retry('filmshelf', 'x')['error'] !== '', 'retry refuses other input');
 t(cs_pinned('a/b:1.2', 'a/b:latest') === '1.2' && cs_pinned('a/b:latest', 'a/b') === '' && cs_pinned('a/b', 'a/b') === '' && cs_pinned('a/b:1.2', 'a/b:1.2') === '' && cs_pinned('a/b@sha256:abc', 'a/b') === 'sha256:abc' && cs_pinned('reg:5000/a/b', 'a/b') === '', 'pinned versions');
+/* a backup whose app is gone: container and saved settings removed */
+mkdir("$W/cfg/backups/oldfilm", 0777, true); $bk = "$W/cfg/backups/oldfilm/my-oldfilm-2026-01-01-1000.xml"; file_put_contents($bk, '<Container/>');
+touch($bk, 1000); file_put_contents("$W/cfg/backups/oldfilm/my-oldfilm-2026-01-02-1000.xml", '<Container/>');
+$g = array_values(array_filter(cs_gone_backups([]), fn($x) => $x['app'] === 'oldfilm'));
+t(count($g) === 1 && count($g[0]['files']) === 2 && $g[0]['files'][0]['file'] === 'my-oldfilm-2026-01-02-1000.xml', 'a gone app is listed, newest backup first');
+t(!array_filter(cs_gone_backups([]), fn($x) => $x['app'] === 'filmshelf'), 'an app still here is not listed as gone');
+t(isset(cs_upgrade_putback('oldfilm', '../x.xml')['error']) && isset(cs_upgrade_putback('../x', 'my-a.xml')['error']) && isset(cs_upgrade_putback('oldfilm', 'my-none.xml')['error']), 'putback refuses other input');
+$r = cs_upgrade_putback('oldfilm', 'my-oldfilm-2026-01-01-1000.xml');
+t(strpos($r['url'] ?? '', 'my-oldfilm-2026-01-01-1000.xml') !== false, 'putback opens the backup in the form');
+$st = array_values(array_filter(cs_jobs_state(), fn($x) => $x['app'] === 'oldfilm'))[0] ?? [];
+t(($st['phase'] ?? '') === 'form' && ($st['attempt'] ?? '') === 'old', 'putback is a job in the form phase');
+$js = []; foreach (cs_jobs_state() as $j) $js[$j['app']] = $j;
+t(!array_filter(cs_gone_backups($js), fn($x) => $x['app'] === 'oldfilm'), 'a gone app with a job open is not listed twice');
+t(cs_upgrade_cancel('oldfilm') && file_exists($bk), 'cancel keeps the backup');
+file_put_contents("$W/tpl/my-oldfilm.xml", '<Container/>');
+t(isset(cs_upgrade_putback('oldfilm', 'my-oldfilm-2026-01-01-1000.xml')['error']), 'putback refuses when saved settings are back');
+@unlink("$W/tpl/my-oldfilm.xml");
 echo "$n tests, " . ($fail ? 'FAILED' : 'all passed') . "\n";
 exit($fail);

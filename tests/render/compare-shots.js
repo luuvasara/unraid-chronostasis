@@ -11,12 +11,14 @@ const sh = c => execSync(c, { encoding: 'utf8', shell: '/bin/bash' });
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
   const ctx = await b.newContext(), page = await ctx.newPage(), errs = [], missed = [];
   page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(() => { try { localStorage.removeItem('chronostasis-walk'); } catch (e) { /* none */ } }); // every screen starts with no answers
   ctx.on('page', p => { if (p !== page) setTimeout(() => p.close().catch(() => {}), 200); });
   for (const [tag, theme, port, w, h] of [['black', 'black', 18811, 1300, 1000], ['white', 'white', 18812, 1300, 1000], ['narrow', 'black', 18811, 420, 900]]) {
     const R = `${W}/${theme}`, F = `${R}/fake`, D = `${R}/tpl/my-filmshelf.xml`, U = `${R}/run/upgrade/my-filmshelf.xml`;
     await page.setViewportSize({ width: w, height: h });
     const shot = async (id, sel, axeSel) => {
       await page.waitForTimeout(250);
+      await page.evaluate(([from, to]) => { [...document.querySelectorAll('body *')].filter(e => e.textContent.includes(from) && ![...e.children].some(c => c.textContent.includes(from))).forEach(e => { e.textContent = e.textContent.split(from).join(to); }); }, [`${R}/config`, '/boot/config/plugins/unraid-chronostasis']);
       await page.locator(sel).first().screenshot({ path: OUT + PFX + tag + '-' + id + '.png' });
       await page.evaluate(AXE);
       const r = await page.evaluate(async s => { const x = await axe.run(document.querySelector(s), { resultTypes: ['violations'], rules: { 'target-size': { enabled: true } } }); return x.violations.map(v => [v.id, v.impact, v.nodes.length, v.nodes[0].target.join(' ')]); }, axeSel || sel);

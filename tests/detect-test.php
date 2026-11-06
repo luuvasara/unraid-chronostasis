@@ -276,5 +276,11 @@ t(strpos($st2, 'FAKEVALUE') === false && strpos($st2, 'MASKVALUE') === false, 'R
 $st3 = cs_share_text($rq3, ['none'], [], '2026.11.05', '7.3.4', [array_values(array_filter($pairApp['findings'], fn($f) => $f['label'] === 'LOG_LEVEL'))[0]['id']]);
 t(strpos($st3, 'Question') === false, 'Report it: only for a field only in your copy');
 
+$both = $pair($c('Hosts', 'ALLOWED', 'Variable', '', 'old'), [['Name' => 'Hosts', 'Target' => 'ALLOWED', 'Type' => 'Variable', 'Default' => 'new', 'Required' => 'true']]);
+$rows = array_values(array_filter($both['findings'], fn($f) => $f['label'] === 'ALLOWED'));
+t(count($rows) === 1 && $rows[0]['kind'] === 'required' && $rows[0]['defaultChanged'] === true && $rows[0]['default'] === 'new', 'required and default both changed: one row');
+$only = $pair($c('Hosts', 'ALLOWED', 'Variable', '', 'old'), [['Name' => 'Hosts', 'Target' => 'ALLOWED', 'Type' => 'Variable', 'Default' => 'old', 'Required' => 'true']]);
+t((array_values(array_filter($only['findings'], fn($f) => $f['label'] === 'ALLOWED'))[0]['defaultChanged'] ?? null) === null, 'only the required flag changed: no default on the row');
+
 echo "$n tests, ", $fail ? 'FAILED' : 'passed', "\n";
 exit($fail);
