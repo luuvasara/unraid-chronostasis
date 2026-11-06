@@ -1,3 +1,5 @@
+<img src="icon.png" width="96" alt="Chronostasis">
+
 # Chronostasis for Unraid
 
 Unraid keeps your own copy of a Docker template when you install an app: your old settings. Community Applications templates keep moving: new fields, renamed fields, new images, new addresses. Old settings stay as they were, and nothing tells you.

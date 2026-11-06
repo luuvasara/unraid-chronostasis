@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Chronostasis</title>
+  <rect x="8" y="8" width="240" height="240" rx="44" fill="#1f3b57"/>
+  <rect x="21" y="21" width="214" height="214" rx="32" fill="none" stroke="#e2601b" stroke-width="8"/>
+  <circle cx="128" cy="128" r="94" fill="#ffffff"/>
+  <path d="M128.0 62.0 L128.0 44.0" stroke="#1f3b57" stroke-width="9" stroke-linecap="round"/>
+  <path d="M165.5 63.0 L170.0 55.3" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M193.0 90.5 L200.7 86.0" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M194.0 128.0 L212.0 128.0" stroke="#1f3b57" stroke-width="9" stroke-linecap="round"/>
+  <path d="M193.0 165.5 L200.7 170.0" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M165.5 193.0 L170.0 200.7" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M128.0 194.0 L128.0 212.0" stroke="#1f3b57" stroke-width="9" stroke-linecap="round"/>
+  <path d="M90.5 193.0 L86.0 200.7" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M63.0 165.5 L55.3 170.0" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M62.0 128.0 L44.0 128.0" stroke="#1f3b57" stroke-width="9" stroke-linecap="round"/>
+  <path d="M63.0 90.5 L55.3 86.0" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M90.5 63.0 L86.0 55.3" stroke="#1f3b57" stroke-width="5" stroke-linecap="round"/>
+  <path d="M128 128 L93.4 108.0 M128 128 L176.5 100.0" stroke="#1f3b57" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M128.0 112.0 L128.0 190.0" stroke="#e2601b" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <circle cx="128" cy="128" r="9" fill="#e2601b"/>
+</svg>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>Chronostasis for Unraid compares the old settings of your Docker containers with their Community Applications templates and helps you upgrade them through Unraid's form. Support and questions: the GitHub issues of this repository.</Profile>
+  <Icon>https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main/icon.png</Icon>
+  <WebPage>https://github.com/luuvasara/unraid-chronostasis</WebPage>
+</CommunityApplications>

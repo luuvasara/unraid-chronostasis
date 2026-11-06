@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Plugin>
+  <Name>Chronostasis</Name>
+  <PluginURL>https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main/unraid-chronostasis.plg</PluginURL>
+  <Support>https://github.com/luuvasara/unraid-chronostasis/issues</Support>
+  <Project>https://github.com/luuvasara/unraid-chronostasis</Project>
+  <Icon>https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main/icon.png</Icon>
+  <Category>Tools:System</Category>
+  <MinVer>6.12.0</MinVer>
+  <License>GPL-2.0</License>
+  <ReadMe>https://github.com/luuvasara/unraid-chronostasis#readme</ReadMe>
+  <ExtraSearchTerms>docker templates old settings upgrade compare template changes renamed fields backup</ExtraSearchTerms>
+  <Overview>Unraid keeps your own copy of a Docker template when you install an app: your old settings. Community Applications templates keep moving, and nothing tells you.
+
+Chronostasis compares old settings with the template in Community Applications and asks about each difference.
+
+- New fields, renamed fields, new images and new addresses, app by app.
+- Upgrade: opens the upgraded settings in Unraid's form, with your values kept. Nothing happens to a container until you press Apply there.
+- Report: a text you can give the template's author, with no values in it.
+- Keeps a backup of your old settings before an upgrade, and you can go back.
+
+A difference is not always a problem, and the template can be the older side. It sends nothing.</Overview>
+</Plugin>
