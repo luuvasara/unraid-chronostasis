@@ -1,0 +1,49 @@
+#!/bin/bash
+# chronostasis check: start one check in the background. Exit 3 when one is already running.
+# chronostasis installed <previous version> <version>: the install message, from CHANGELOG.md.
+set -uo pipefail
+HERE=$(cd "$(dirname "$0")" && pwd)
+RUN=${CS_RUN:-/var/run/unraid-chronostasis}
+LOG=${CS_CHANGELOG:-$HERE/../CHANGELOG.md}
+
+# the newest section of CHANGELOG.md in a plain ASCII box
+latest_box() {
+  local w=72 line bar
+  bar="+$(printf '%*s' $((w + 2)) '' | tr ' ' '-')+"
+  echo "$bar"
+  printf '| %-*s |\n' "$w" "Latest changes in $1"
+  echo "$bar"
+  awk '/^## /{n++; next} n==1 && /^- /{print}' "$LOG" | fold -s -w $((w - 2)) | while IFS= read -r line; do
+    case $line in "- "*) ;; *) line="  $line" ;; esac
+    printf '| %-*s |\n' "$w" "${line%"${line##*[! ]}"}"
+  done
+  echo "$bar"
+}
+case ${1:-} in
+  installed)
+    prev=${2:-} ver=${3:-}
+    if [ -z "$prev" ]; then
+      echo "Chronostasis $ver installed. Nothing has been checked yet."
+      echo "Open Settings, Chronostasis and press Check now."
+      latest_box "$ver"
+    elif [ "$prev" != "$ver" ]; then
+      echo "Chronostasis updated from $prev to $ver."
+      latest_box "$ver"
+    else
+      echo "Chronostasis $ver ready."
+    fi
+    ;;
+  check)
+    mkdir -p "$RUN"
+    exec 9>"$RUN/check.lock"
+    flock -n 9 || { echo "A check is already running."; exit 3; }
+    php -d memory_limit=768M "$HERE/check.php" >/dev/null 2>"$RUN/check.err" 9>&- &
+    pid=$!
+    printf '{"pid":%d,"running":true,"step":"Starting"}' "$pid" >"$RUN/state.json.$$" && mv "$RUN/state.json.$$" "$RUN/state.json"
+    # keeps the lock until the check ends; this helper holds fd 9, the request does not wait for it
+    { wait "$pid" 2>/dev/null; while kill -0 "$pid" 2>/dev/null; do sleep 1; done; } >/dev/null 2>&1 &
+    disown -a
+    echo "Check started."
+    ;;
+  *) echo "usage: chronostasis check | installed <previous> <version>" >&2; exit 2 ;;
+esac

@@ -1,0 +1,153 @@
+<?php
+/* Offline tests of include/upgrade.php: the upgraded settings, the checks before the form, and what happens after Apply,
+ * against a stand-in for docker. Made-up values only. */
+$H = dirname(__DIR__); $P = "$H/src/usr/local/emhttp/plugins/unraid-chronostasis";
+$W = "$H/tests/.work/upgrade"; exec('rm -rf ' . escapeshellarg($W)); mkdir("$W/tpl", 0777, true); mkdir("$W/fake/c", 0777, true); mkdir("$W/cfg"); mkdir("$W/run");
+foreach (['CS_TEMPLATES' => "$W/tpl", 'CS_CONFIG' => "$W/cfg", 'CS_RUN' => "$W/run", 'CS_CACHE' => "$W/cache", 'CS_DOCKER' => "$H/tests/render/fake-docker.sh", 'CS_FAKE_DOCKER' => "$W/fake", 'CS_SETTLE' => '0', 'CS_UP' => '0'] as $k => $v) putenv("$k=$v");
+require "$P/include/lib.php"; require "$P/include/detect.php"; require "$P/include/share.php"; require "$P/include/upgrade.php";
+$fail = 0; $n = 0;
+function t(bool $c, string $m): void { global $fail, $n; $n++; if ($c) echo "ok   $m\n"; else { echo "FAIL $m\n"; $fail = 1; } }
+$F = "$H/tests/fixtures/compare";
+$saved = "$W/tpl/my-filmshelf.xml"; file_put_contents($saved, str_replace('<Network>bridge</Network>', '<Network>bridge</Network><WebUI>http://[IP]:[PORT:8080]/</WebUI>', (string)file_get_contents("$F/templates/my-filmshelf.xml")));
+$feed = json_decode(file_get_contents("$F/feed.json"), true); $idx = cs_index($feed);
+$tplEntry = null; foreach ($feed['applist'] as $e) if ($e['Name'] === 'filmshelf') $tplEntry = $e;
+$tpl = cs_template_data($tplEntry);
+$report = fn() => cs_apply_dismissed(['apps' => [cs_app(cs_read_template($saved), $idx, 200)]], []);
+$a = $report()['apps'][0];
+$find = fn($k, $l) => array_values(array_filter($a['findings'], fn($f) => $f['kind'] === $k && $f['label'] === $l))[0] ?? null;
+$answers = [['id' => $find('new', 'MOVIES_DIR')['id'], 'type' => 'same', 'other' => $find('yours', 'MOVIE_DIR')['id']],
+  ['id' => $find('renamed', 'FROM_ADDRESS')['id'], 'type' => 'renamed'],
+  ['id' => $find('new', 'LOG_FORMAT')['id'], 'type' => 'include'],
+  ['id' => $find('new', '/downloads')['id'], 'type' => 'include'],
+  ['id' => $find('new', '/media')['id'], 'type' => 'same', 'other' => $find('yours', '/mnt/media')['id']],
+  ['id' => $find('new', '8181/tcp')['id'], 'type' => 'same', 'other' => $find('yours', '8080/tcp')['id']],
+  ['id' => $find('yours', 'MY_EXTRA_FLAG')['id'], 'type' => 'own']];
+$up = "|running|2020-01-01T00:00:00.000Z|dockerman||bridge|0|";
+$set = function (string $name, ?string $line) use ($W) { $f = "$W/fake/c/$name"; if ($line === null) @unlink($f); else file_put_contents($f, "$line\n"); };
+$set('filmshelf', "aaa$up");
+
+$b = cs_upgrade_build($saved, $tpl, cs_upgrade_ops($a, $answers));
+$x = simplexml_load_string($b['xml']);
+$cfg = []; foreach ($x->Config as $c) $cfg[(string)$c['Target']] = $c;
+t(isset($cfg['MOVIES_DIR']) && (string)$cfg['MOVIES_DIR'] === '/movies' && !isset($cfg['MOVIE_DIR']), 'a match takes the template key and keeps the value');
+t(isset($cfg['FROM_ADDRESS']) && (string)$cfg['FROM_ADDRESS'] === 'films@example.com', 'a rename keeps the value');
+t((string)$cfg['LOG_FORMAT'] === 'json', 'Include it takes the template default');
+t((string)$cfg['MY_EXTRA_FLAG'] === '--fast-scan', 'your own field stays');
+t(!isset($cfg['FRESH_OPT']), 'a field you did not include stays out');
+t((string)$cfg['OLD_API_TOKEN'] === 'made-up-secret-that-must-not-show' && (string)$cfg['OLD_API_TOKEN']['Mask'] === 'true', 'a masked value survives, still masked');
+t((string)$cfg['LOG_LEVEL'] === 'warn' && (string)$cfg['LOG_LEVEL']['Default'] === 'debug', 'your value stays, the default is the template one');
+t((string)$cfg['WORKERS'] === '4' && (string)$cfg['WORKERS']['Required'] === 'true', 'the required flag follows the template');
+t((string)$cfg['/media'] === '/mnt/user/Films', 'a moved path keeps the host path');
+t((string)$cfg['8181'] === '18080' && strpos($b['xml'], '[PORT:8181]') !== false && strpos($b['xml'], '[PORT:8080]') === false, 'a port keeps its host port and the web address follows');
+t((string)$x->Config[0]['Target'] === '/downloads' && (string)$x->Config[0] === '' && (string)$x->Config[0]['Display'] === 'always', 'a required field left empty comes first');
+t((string)$x->Name === 'filmshelf', 'the name stays');
+$dump = json_encode($b['rows']);
+t(strpos($dump, 'made-up-secret') === false, 'the rows hold no masked value');
+t($b['rows'][0]['new'][1] === "you fill this in, in Unraid's form", 'the empty required field is the first row');
+$heads = array_column($b['rows'], 'head');
+t(in_array('Same name in the template, new key', $heads, true) && in_array('Path moved', $heads, true) && in_array('Port changed', $heads, true) && in_array('You answered Yes, same field', $heads, true) && in_array('You answered Include it', $heads, true) && in_array('New, required, no default', $heads, true), 'each change has its heading');
+$before = md5_file($saved);
+$p = cs_plan_app($a, $tpl, $answers);
+t($p !== null && !$p['blocks'] && md5_file($saved) === $before && !glob("$W/cfg/backups/*"), 'the plan writes nothing');
+t(strpos(json_encode($p), 'made-up-secret') === false, 'the plan holds no masked value');
+t($p['backupDir'] === "$W/cfg/backups/filmshelf/", 'the plan names the backup folder');
+t(in_array('Keep the name in the form. A new name there leaves this container as it is and makes a second one.', $p['warnings'], true), 'the name warning');
+$set('filmshelf', "aaa|exited|2020-01-01T00:00:00.000Z|dockerman||bridge|0|");
+t((bool)array_filter(cs_plan_app($a, $tpl, $answers)['warnings'], fn($w) => strpos($w, 'Apply starts it') !== false), 'a stopped container: it says Apply starts it');
+$set('filmshelf', "aaa|running|2020-01-01T00:00:00.000Z|composeman|stack|bridge|0|");
+t(strpos(implode(' ', cs_plan_app($a, $tpl, $answers)['blocks']), 'Compose') !== false, 'a Compose container is refused');
+$set('filmshelf', "aaa|running|2020-01-01T00:00:00.000Z|dockerman|<no value>|bridge|0|");
+t(cs_plan_app($a, $tpl, $answers)['blocks'] === [], 'a label that is not there is no Compose project');
+$set('filmshelf', null);
+t(cs_plan_app($a, $tpl, $answers)['blocks'] !== [], 'no container: refused');
+$set('filmshelf', "aaa$up");
+$set('child', 'ccc|running|2020-01-01T00:00:00.000Z|dockerman||container:filmshelf|0|');
+t((bool)array_filter(cs_plan_app($a, $tpl, $answers)['warnings'], fn($w) => strpos($w, 'child') !== false), 'a container on this network is named');
+$set('child', null);
+$gone = "$W/tpl/my-gone.xml"; file_put_contents($gone, '<Container><Name>gone</Name><Network>wg-gone</Network></Container>');
+t(cs_network_problem('wg-gone') !== '' && cs_network_problem('bridge') === '', 'a network that is gone is refused');
+t(cs_network_problem('container:nothere') !== '', 'a missing main container is refused');
+$w = cs_upgrade_warnings('<Container><Config Name="A" Target="A" Default="" Type="Variable">x&lt;y&gt;</Config><Config Name="B" Target="B" Default="d" Type="Variable"></Config><Config Name="C" Target="C" Default="a|b" Type="Variable">z</Config></Container>');
+t(count($w) === 3 && strpos($w[0], 'A') !== false && strpos(implode(' ', $w), 'x<y') === false, 'warnings for < and >, empty and off-list, by name only');
+
+$r = cs_upgrade_open($a, $tpl, $answers);
+t(!empty($r['url']) && strpos(rawurldecode($r['url']), '/Docker/AddContainer?xmlTemplate=user:') === 0, 'open: the form address uses user:');
+$cand = cs_upgrade_file('filmshelf');
+t(is_file($cand) && (fileperms($cand) & 0777) === 0600, 'the upgraded settings are private');
+$jobs = cs_read_json(cs_jobs_file()); $bk = $jobs['filmshelf']['backup'];
+t(is_file($bk) && md5_file($bk) === $before && preg_match('~/backups/filmshelf/my-filmshelf-\d{4}-\d{2}-\d{2}-\d{4}\.xml$~', $bk) === 1, 'the backup is taken first and is identical');
+t(strpos((string)file_get_contents(cs_jobs_file()), 'made-up-secret') === false, 'the job file holds no value');
+t(md5_file($saved) === $before, 'opening changes the saved template in no way');
+cs_upgrade_open($a, $tpl, $answers);
+t(count(glob("$W/cfg/backups/filmshelf/*")) === 1, 'opening again keeps the one backup');
+$st = cs_jobs_state()[0];
+t($st['phase'] === 'form', 'waiting while nothing has happened');
+t(cs_upgrade_cancel('filmshelf') && !is_file($cand) && cs_read_json(cs_jobs_file()) === [], 'I did not press Apply: the upgraded settings are deleted');
+t(is_file($bk), 'and the backup stays');
+
+/* pressed Apply: template written */
+$press = function (string $xml = '') use ($saved, $cand) { file_put_contents($saved, $xml !== '' ? $xml : (string)@file_get_contents($cand)); touch($saved, time() - 1); clearstatcache(); };
+cs_upgrade_open($report()['apps'][0], $tpl, $answers); $b0 = (string)file_get_contents($cand);
+$press(); $set('filmshelf', "bbb$up");
+$st = cs_jobs_state()[0];
+t($st['phase'] === 'applied' && !is_file($cand) && !$st['differs'], 'Apply worked: applied, the upgraded settings are deleted, nothing differs');
+$r = cs_upgrade_retry('filmshelf', 'old');
+t(strpos(rawurldecode($r['url']), 'user:' . $bk) !== false || strpos(rawurldecode($r['url']), '/backups/filmshelf/') !== false, 'Go back opens the backup');
+t(cs_upgrade_cancel('filmshelf') && cs_jobs_state()[0]['phase'] === 'applied', 'not pressing Apply leaves it applied');
+cs_upgrade_retry('filmshelf', 'old'); $press((string)file_get_contents($bk)); $set('filmshelf', "ccc$up");
+t(cs_jobs_state()[0]['phase'] === 'restored', 'Go back worked: restored');
+
+$fresh = function () use ($W, $saved, $bk, $set, $up) { foreach (['manifest-error', 'create-error', 'image-ok', 'calls.log'] as $f) @unlink("$W/fake/$f"); @unlink(cs_jobs_file()); copy($bk, $saved); touch($saved, time() - 100); clearstatcache(); $set('filmshelf', "aaa$up"); };
+$fresh(); cs_upgrade_open($report()['apps'][0], $tpl, $answers);
+$tok = (string)file_get_contents($cand); $press(str_replace('example/filmshelf:latest', 'example/filmshelf:nope', $tok)); $set('filmshelf', null);
+file_put_contents("$W/fake/manifest-error", "no such manifest: docker.io/example/filmshelf:nope\n");
+$st = cs_jobs_state()[0];
+t($st['phase'] === 'failed' && $st['container'] === 'missing' && $st['errorFrom'] === 'image' && $st['error'] === 'no such manifest: docker.io/example/filmshelf:nope', 'bad tag: missing, with the image error');
+t(strpos((string)file_get_contents(cand_of()), ':nope') !== false, 'Try again opens what the form sent');
+$calls = (int)substr_count((string)file_get_contents("$W/fake/calls.log"), 'manifest');
+cs_jobs_state();
+t(substr_count((string)file_get_contents("$W/fake/calls.log"), 'manifest') === $calls, 'the check again runs once per Apply');
+$r = cs_upgrade_retry('filmshelf', 'upgraded'); t(strpos(rawurldecode($r['url']), '/upgrade/my-filmshelf.xml') !== false, 'Try again opens the upgraded settings');
+t(cs_upgrade_cancel('filmshelf') && cs_jobs_state()[0]['phase'] === 'failed', 'closing the form again returns to the failure');
+function cand_of(): string { return cs_upgrade_file('filmshelf'); }
+
+$fresh(); $x0 = (string)file_get_contents($saved);
+$saved2 = str_replace('<Network>bridge</Network>', '<Network>bridge</Network><ExtraParams>-e TOKEN=made-up-xp --name other --no-such-flag-cs --memory 1g</ExtraParams>', $x0);
+file_put_contents($saved, $saved2); touch($saved, time() - 100); clearstatcache();
+cs_upgrade_open($report()['apps'][0], $tpl, $answers);
+$press(); $set('filmshelf', null); touch("$W/fake/image-ok");
+file_put_contents("$W/fake/create-error", "docker: unknown flag: --no-such-flag-cs\nSee 'docker create --help'.\n");
+$st = cs_jobs_state()[0];
+t($st['errorFrom'] === 'params' && $st['error'] === 'unknown flag: --no-such-flag-cs', 'bad parameter: the error from the recheck');
+$log = (string)file_get_contents("$W/fake/calls.log");
+t(strpos($log, 'made-up-xp') === false && strpos($log, 'TOKEN') === false && preg_match('/create --pull never --name chronostasis-recheck-[0-9a-f]{8} --no-such-flag-cs --memory 1g /', $log) === 1, 'the recheck has no -e value and only the temporary name');
+t(preg_match('/rm -f chronostasis-recheck-/', $log) === 1, 'the temporary container is removed');
+t(strpos($log, ' start ') === false, 'the temporary container is never started');
+$fresh(); cs_upgrade_open($report()['apps'][0], $tpl, $answers);
+$press(); $set('filmshelf', "ddd|created|0001-01-01T00:00:00Z|dockerman||bridge|0|Bind for :::18080 failed: port is already allocated");
+$st = cs_jobs_state()[0];
+t($st['container'] === 'created' && $st['errorFrom'] === 'docker' && strpos($st['error'], 'port is already allocated') !== false, 'port clash: created, with Docker\'s kept error');
+cs_upgrade_retry('filmshelf', 'old'); $press((string)file_get_contents($bk)); $set('filmshelf', "eee|created|0001-01-01T00:00:00Z|dockerman||bridge|0|Bind for :::18080 failed: port is already allocated");
+$st = cs_jobs_state()[0];
+t($st['attempt'] === 'old' && $st['phase'] === 'failed', 'going back can fail too');
+$r = cs_upgrade_retry('filmshelf', 'upgraded');
+t(!empty($r['url']), 'and the upgraded settings can still be opened');
+$fresh(); cs_upgrade_open($report()['apps'][0], $tpl, $answers); $press(); $set('filmshelf', null);
+$st = cs_jobs_state()[0];
+t($st['errorFrom'] === '' && $st['error'] === '' && $st['container'] === 'missing', 'nothing found: no error, the page shows the fallback');
+$set('filmshelf', "fff$up");
+t(cs_jobs_state()[0]['phase'] === 'applied', 'a slow Apply that ends well still ends as applied');
+putenv('CS_SETTLE=600'); $fresh(); cs_upgrade_open($report()['apps'][0], $tpl, $answers); $press(); $set('filmshelf', null);
+t(cs_jobs_state()[0]['phase'] === 'working', 'just after Apply: working, not failed');
+putenv('CS_SETTLE=0');
+$fresh(); cs_upgrade_open($report()['apps'][0], $tpl, $answers); file_put_contents($saved, ' changed'); touch($saved, time() + 9); clearstatcache();
+t(cs_upgrade_open($a, $tpl, $answers)['error'] !== '', 'old settings changed since the check: nothing opens');
+t(cs_split_args('--a="b c" \'d e\' f\\ g') === ['--a=b c', 'd e', 'f g'], 'extra parameters split as a shell does');
+t(cs_split_args('--a; rm x') === null && cs_split_args('$(x)') === null && cs_split_args('"open') === null, 'anything more than words is not run');
+t(cs_recheck_args(['-e', 'A=1', '--env=B=2', '-eC=3', '--env-file', 'f', '--name=x', '--name', 'y', '--cpus=1']) === ['--cpus=1'], 'no -e, no other name');
+t(cs_docker_error("docker: Error response from daemon: x\nRun 'docker run --help' for more information") === 'x', 'the error text is cleaned');
+t(!cs_safe_name('../x') && !cs_safe_name('a/b') && cs_safe_name('film.shelf_1'), 'names with a path are refused');
+t(cs_upgrade_retry('../../etc', 'old')['error'] !== '' && cs_upgrade_retry('filmshelf', 'x')['error'] !== '', 'retry refuses other input');
+t(cs_pinned('a/b:1.2', 'a/b:latest') === '1.2' && cs_pinned('a/b:latest', 'a/b') === '' && cs_pinned('a/b', 'a/b') === '' && cs_pinned('a/b:1.2', 'a/b:1.2') === '' && cs_pinned('a/b@sha256:abc', 'a/b') === 'sha256:abc' && cs_pinned('reg:5000/a/b', 'a/b') === '', 'pinned versions');
+echo "$n tests, " . ($fail ? 'FAILED' : 'all passed') . "\n";
+exit($fail);

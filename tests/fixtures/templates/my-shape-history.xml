@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>shape-history</Name><Repository>shapes/shape-history</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/shapes/t/main/shape-history.xml</TemplateURL>
+<Config Name="Config" Target="/config" Default="" Mode="rw" Type="Path" Required="true" Mask="false">FAKEVALUE-config</Config>
+<Config Name="Cache" Target="CACHE_DIR" Default="" Mode="" Type="Variable" Required="false" Mask="false">/fake/cache</Config>
+<Config Name="Scratch notes" Target="SCRATCH_DIRS" Default="" Mode="" Type="Variable" Required="false" Mask="false">FAKEVALUE-near-spelling</Config>
+<Config Name="Retired" Target="RETIRED_KEY" Default="" Mode="" Type="Variable" Required="false" Mask="false">FAKEVALUE-retired</Config>
+</Container>

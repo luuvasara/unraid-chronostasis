@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>shape-optional-field</Name><Repository>shapes/shape-optional-field</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/shapes/t/main/shape-optional-field.xml</TemplateURL>
+<Config Name="Config" Target="/config" Default="" Mode="rw" Type="Path" Required="true" Mask="false">/mnt/user/PrivateShareName/x</Config>
+</Container>

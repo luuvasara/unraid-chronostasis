@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>shape-required-path-default</Name><Repository>shapes/shape-required-path-default</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/shapes/t/main/shape-required-path-default.xml</TemplateURL>
+<Config Name="Config" Target="/config" Default="" Mode="rw" Type="Path" Required="true" Mask="false">/mnt/user/PrivateShareName/x</Config>
+</Container>

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>filmshelf</Name><Repository>example/filmshelf:latest</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/example/templates/main/filmshelf.xml</TemplateURL><Support>https://forums.unraid.net/topic/1-filmshelf/</Support><Project>https://github.com/example/filmshelf</Project>
+<Config Name="Config" Target="/config" Default="/mnt/user/appdata/filmshelf" Mode="rw" Type="Path" Required="true" Mask="false">/mnt/user/appdata/filmshelf</Config>
+<Config Name="Film folder" Target="MOVIE_DIR" Default="" Mode="" Type="Variable" Required="false" Mask="false">/movies</Config>
+<Config Name="Sender address" Target="FROM_EMAIL_ADDRESS" Default="" Mode="" Type="Variable" Required="true" Mask="false">films@example.com</Config>
+<Config Name="My extra flag" Target="MY_EXTRA_FLAG" Default="" Mode="" Type="Variable" Required="false" Mask="false">--fast-scan</Config>
+<Config Name="Old token" Target="OLD_API_TOKEN" Default="" Mode="" Type="Variable" Required="false" Mask="true">made-up-secret-that-must-not-show</Config>
+<Config Name="Java options" Target="JAVA_EXTRA_OPTIONS" Default="" Mode="" Type="Variable" Required="false" Mask="false">-Xms512m -Xmx4096m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dfile.encoding=UTF-8 -Dexample.cache.directory=/config/cache/thumbnails/large/originals/2026/archive -Dexample.feature.flags=alpha,beta,gamma,delta,epsilon</Config>
+<Config Name="Log level" Target="LOG_LEVEL" Default="info" Mode="" Type="Variable" Required="false" Mask="false">warn</Config>
+<Config Name="Workers" Target="WORKERS" Default="" Mode="" Type="Variable" Required="false" Mask="false">4</Config>
+<Config Name="Media" Target="/mnt/media" Default="" Mode="rw" Type="Path" Required="false" Mask="false">/mnt/user/Films</Config>
+<Config Name="Web UI" Target="8080" Default="8080" Mode="tcp" Type="Port" Required="true" Mask="false">18080</Config>
+</Container>

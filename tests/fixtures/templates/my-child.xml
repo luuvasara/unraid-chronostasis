@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>child</Name><Repository>acme/child</Repository><Network>container:gluetun</Network>
+<TemplateURL>https://raw.githubusercontent.com/acme/templates/main/child.xml</TemplateURL>
+<Config Name="Data" Target="/data/" Default="" Mode="rw" Type="Path" Required="false" Mask="false">/mnt/user/x</Config>
+</Container>

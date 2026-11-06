@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>shape-pair</Name><Repository>shapes/shape-pair</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/shapes/t/main/shape-pair.xml</TemplateURL>
+<Config Name="Config" Target="/config" Default="" Mode="rw" Type="Path" Required="true" Mask="false">FAKEVALUE-config</Config>
+<Config Name="Film folder" Target="MOVIE_DIR" Default="" Mode="" Type="Variable" Required="false" Mask="false">/movies</Config>
+<Config Name="Library" Target="LIBRARY_DIR" Default="" Mode="" Type="Variable" Required="false" Mask="false">FAKEVALUE-library</Config>
+<Config Name="Old token" Target="OLD_TOKEN" Default="" Mode="" Type="Variable" Required="false" Mask="true">MASKVALUE7777</Config>
+<Config Name="Odd" Target="ODD_VALUE" Default="" Mode="" Type="Variable" Required="false" Mask="false">&lt;img src=x onerror="document.documentElement.dataset.pwned=1"&gt;MARKVALUE</Config>
+<Config Name="Web" Target="8088" Default="" Mode="tcp" Type="Port" Required="false" Mask="false">18088</Config>
+<Config Name="Media" Target="/media" Default="" Mode="rw" Type="Path" Required="false" Mask="false">/mnt/user/FakeMedia</Config>
+<Config Name="Level" Target="LOG_LEVEL" Default="info" Mode="" Type="Variable" Required="false" Mask="false">FAKEVALUE-level</Config>
+<Config Name="Mode" Target="RUN_MODE" Default="" Mode="" Type="Variable" Required="false" Mask="false">FAKEVALUE-mode</Config>
+</Container>

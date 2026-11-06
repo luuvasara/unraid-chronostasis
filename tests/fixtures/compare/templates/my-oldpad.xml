@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>oldpad</Name><Repository>newauthor/oldpad</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/oldauthor/unraid-templates/master/oldpad.xml</TemplateURL>
+<Config Name="Data" Target="/data" Default="" Mode="rw" Type="Path" Required="false" Mask="false">/mnt/user/appdata/oldpad</Config>
+</Container>

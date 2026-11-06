@@ -1,0 +1,133 @@
+{
+ "last_updated": "2026-11-05",
+ "applist": [
+  {
+   "Name": "filmshelf",
+   "Repo": "Example's Repository",
+   "Repository": "example/filmshelf",
+   "TemplateURL": "https://raw.githubusercontent.com/example/templates/main/filmshelf.xml",
+   "Support": "https://forums.unraid.net/topic/1-filmshelf/",
+   "Project": "https://github.com/example/filmshelf",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "/mnt/user/appdata/filmshelf",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Movies folder",
+      "Target": "MOVIES_DIR",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Sender address",
+      "Target": "FROM_ADDRESS",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Log format",
+      "Target": "LOG_FORMAT",
+      "Default": "json",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Downloads",
+      "Target": "/downloads",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Log level",
+      "Target": "LOG_LEVEL",
+      "Default": "debug",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Workers",
+      "Target": "WORKERS",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Media",
+      "Target": "/media",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Web UI",
+      "Target": "8181",
+      "Default": "8181",
+      "Mode": "tcp",
+      "Type": "Port",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "oldpad",
+   "Repo": "Example's Repository",
+   "Repository": "ghcr.io/newauthor/oldpad",
+   "TemplateURL": "https://raw.githubusercontent.com/newauthor/templates/main/oldpad.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Data",
+      "Target": "/data",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "false",
+      "Mask": "false"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>my-homebox.lan-app</Name><Repository>registry.homebox.lan:5000/me/app:1</Repository><Network>bridge</Network>
+<TemplateURL>https://git.homebox.lan/me/t/raw/app.xml</TemplateURL><Support>javascript:alert(1)</Support></Container>

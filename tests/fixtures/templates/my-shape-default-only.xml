@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>shape-default-only</Name><Repository>shapes/shape-default-only</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/shapes/t/main/shape-default-only.xml</TemplateURL>
+<Config Name="Config" Target="/config" Default="" Mode="rw" Type="Path" Required="true" Mask="false">/mnt/user/PrivateShareName/x</Config>
+<Config Name="Level" Target="LOG_LEVEL" Default="info" Mode="" Type="Variable" Required="true" Mask="false">SECRETVALUE9876</Config>
+</Container>

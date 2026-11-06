@@ -1,0 +1,14 @@
+{
+ "example/templates/filmshelf.xml": {
+  "keys": {
+   "variable:MOVIE_DIR": "2025-11"
+  },
+  "pairs": [
+   {
+    "from": "variable:MOVIE_DIR",
+    "to": "variable:MOVIES_DIR",
+    "date": "2025-11"
+   }
+  ]
+ }
+}

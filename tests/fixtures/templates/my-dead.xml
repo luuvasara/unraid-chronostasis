@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>dead</Name><Repository>old/dead</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/d/t/main/dead.xml</TemplateURL>
+<Config Name="D" Target="/d" Default="" Mode="rw" Type="Path" Required="false" Mask="false">/x</Config></Container>

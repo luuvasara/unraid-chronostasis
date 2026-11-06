@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>dup</Name><Repository>shared/image:latest</Repository><Network>bridge</Network><TemplateURL>false</TemplateURL></Container>

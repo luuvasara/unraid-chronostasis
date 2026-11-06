@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<Container version="2"><Name>alpha</Name><Repository>lscr.io/acme/alpha:latest</Repository><Network>bridge</Network>
+<TemplateURL>https://raw.githubusercontent.com/acme/templates/master/alpha.xml</TemplateURL><Support>https://forums.unraid.net/topic/1-alpha/</Support>
+<Config Name="Web" Target="8080" Default="8080" Mode="tcp" Type="Port" Required="true" Mask="false">SECRETPORT1234</Config>
+<Config Name="Config" Target="/config" Default="/mnt/user/PrivateShareName/alpha" Mode="rw" Type="Path" Required="true" Mask="false">/mnt/user/PrivateShareName/alpha</Config>
+<Config Name="Off" Target="9090" Default="9090" Mode="tcp" Type="Disabled:Port" Required="false" Mask="false">SECRETPORT1234</Config>
+<Config Name="OffGone" Target="OFF_GONE" Default="" Mode="" Type="Disabled:Variable" Required="false" Mask="false">SECRETVALUE9876</Config>
+<Config Name="Level" Target="LOG_LEVEL" Default="info" Mode="" Type="Variable" Required="false" Mask="false">SECRETVALUE9876</Config>
+<Config Name="Token" Target="API_TOKEN" Default="MASKDEFAULT5555" Mode="" Type="Variable" Required="false" Mask="true">MASKVALUE7777</Config>
+<Config Name="Old" Target="OLD_VAR" Default="hostbox.lan" Mode="" Type="Variable" Required="false" Mask="false">10.77.0.88</Config>
+<Config Name="Media" Target="/mnt/user/PrivateShareName" Default="" Mode="rw" Type="Path" Required="false" Mask="false">/mnt/user/PrivateShareName</Config>
+</Container>

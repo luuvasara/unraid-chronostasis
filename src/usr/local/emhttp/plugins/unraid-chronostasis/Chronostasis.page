@@ -1,0 +1,7 @@
+Menu="Utilities"
+Type="xmenu"
+Title="Chronostasis"
+Icon="fa-clock-o"
+Tag="clock-o"
+Tabs="true"
+---

@@ -1,0 +1,28 @@
+Menu="Chronostasis:2"
+Title="About"
+Tag="info-circle"
+Markdown="false"
+---
+<?php
+/* Version and changes come from CHANGELOG.md, which build.sh makes from the .plg's <CHANGES>, as for the install output. */
+$cs_root = ($docroot ?? '/usr/local/emhttp') . '/plugins/unraid-chronostasis';
+require_once "$cs_root/include/changelog.php";
+$cs_log = cs_changelog("$cs_root/CHANGELOG.md");
+$cs_e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
+?>
+<link rel="stylesheet" href="/plugins/unraid-chronostasis/assets/chronostasis.css">
+<div class="cs" id="cs-about">
+  <p class="cs-version">Chronostasis <strong id="cs-version"><?=$cs_e($cs_log[0]['version'] ?? 'unknown')?></strong></p>
+  <h3>Latest changes</h3>
+  <ul id="cs-latest"><?php foreach (($cs_log[0]['items'] ?? []) as $i): ?><li><?=$cs_e($i)?></li><?php endforeach; ?></ul>
+<?php if (count($cs_log) > 1): ?>
+  <details><summary>Earlier versions</summary>
+<?php foreach (array_slice($cs_log, 1) as $e): ?>
+    <h4><?=$cs_e($e['version'])?></h4>
+    <ul><?php foreach ($e['items'] as $i): ?><li><?=$cs_e($i)?></li><?php endforeach; ?></ul>
+<?php endforeach; ?>
+  </details>
+<?php endif; ?>
+  <p class="cs-muted">Compares the old settings of your Docker containers with Community Applications and helps you upgrade them through Unraid's form. It sends nothing.</p>
+  <p class="cs-muted" id="cs-more"><a href="https://github.com/search?q=owner%3Aluuvasara+unraid&amp;type=repositories" target="_blank" rel="noopener noreferrer">More Unraid plugins</a></p>
+</div>

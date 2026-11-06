@@ -1,0 +1,443 @@
+{
+ "last_updated": "2026-11-05",
+ "deprecated": {
+  "old/dead": "Deprecated application"
+ },
+ "blacklisted": {
+  "bad/image": "Unable to be pulled"
+ },
+ "applist": [
+  {
+   "Name": "AlphaApp",
+   "Repo": "Alpha's Repository",
+   "Repository": "lscr.io/acme/alpha",
+   "TemplateURL": "https://raw.githubusercontent.com/acme/templates/main/alpha.xml",
+   "Support": "https://forums.unraid.net/topic/1-alpha/",
+   "Project": "https://github.com/acme/alpha",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Web",
+      "Target": "8080",
+      "Default": "8080",
+      "Mode": "tcp",
+      "Type": "Port",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "/mnt/user/appdata/alpha",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "New one",
+      "Target": "NEW_VAR",
+      "Default": "on",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Level",
+      "Target": "LOG_LEVEL",
+      "Default": "debug",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Token",
+      "Target": "API_TOKEN",
+      "Default": "feedmask",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "true"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Off",
+      "Target": "9090",
+      "Default": "9091",
+      "Mode": "tcp",
+      "Type": "Port",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "VpnChild",
+   "Repo": "Beta's Repository",
+   "Repository": "acme/child",
+   "TemplateURL": "https://raw.githubusercontent.com/acme/templates/main/child.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Web",
+      "Target": "9000",
+      "Default": "9000",
+      "Mode": "tcp",
+      "Type": "Port",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Data",
+      "Target": "/data",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "false",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "Dup A",
+   "Repo": "A's",
+   "Repository": "shared/image",
+   "TemplateURL": "https://raw.githubusercontent.com/a/t/main/dup.xml",
+   "Support": "https://a.example/s",
+   "Config": []
+  },
+  {
+   "Name": "Dup B",
+   "Repo": "B's",
+   "Repository": "shared/image:latest",
+   "TemplateURL": "https://raw.githubusercontent.com/b/t/main/dup.xml",
+   "Support": "https://b.example/s",
+   "Config": []
+  },
+  {
+   "Name": "Moved",
+   "Repo": "M's",
+   "Repository": "ghcr.io/maker/moved",
+   "TemplateURL": "https://raw.githubusercontent.com/maker/new-templates/main/moved.xml",
+   "ModeratorComment": "<b>Note</b> <script>alert(1)</script>use the new image",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "D",
+      "Target": "/d",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "false",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "Dead",
+   "Repo": "D's",
+   "Repository": "old/dead",
+   "caTemplateURL": "https://raw.githubusercontent.com/d/t/main/dead.xml",
+   "Deprecated": true,
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "D",
+      "Target": "/d",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "false",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-required-path",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-required-path",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-required-path.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Data",
+      "Target": "/data",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-required-path-default",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-required-path-default",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-required-path-default.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Logs",
+      "Target": "/app/logs",
+      "Default": "/mnt/user/appdata/x/logs",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-optional-field",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-optional-field",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-optional-field.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Image cache",
+      "Target": "/data/image-cache",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "false",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-variable-target",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-variable-target",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-variable-target.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Email - From Address",
+      "Target": "FROM_ADDRESS",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-default-only",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-default-only",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-default-only.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Level",
+      "Target": "LOG_LEVEL",
+      "Default": "debug",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-pair",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-pair",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-pair.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Movies folder",
+      "Target": "MOVIES_DIR",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "New key",
+      "Target": "NEW_KEY",
+      "Default": "feedmask2",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "true"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Fresh",
+      "Target": "FRESH_OPT",
+      "Default": "fresh-default",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Fill",
+      "Target": "FILL_ME",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Level",
+      "Target": "LOG_LEVEL",
+      "Default": "debug",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Mode",
+      "Target": "RUN_MODE",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "true",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "shape-history",
+   "Repo": "Shapes' Repository",
+   "Repository": "shapes/shape-history",
+   "TemplateURL": "https://raw.githubusercontent.com/shapes/t/main/shape-history.xml",
+   "Config": [
+    {
+     "@attributes": {
+      "Name": "Config",
+      "Target": "/config",
+      "Default": "",
+      "Mode": "rw",
+      "Type": "Path",
+      "Required": "true",
+      "Mask": "false"
+     }
+    },
+    {
+     "@attributes": {
+      "Name": "Scratch",
+      "Target": "SCRATCH_DIR",
+      "Default": "",
+      "Mode": "",
+      "Type": "Variable",
+      "Required": "false",
+      "Mask": "false"
+     }
+    }
+   ]
+  },
+  {
+   "Name": "SomePlugin",
+   "Plugin": true,
+   "PluginURL": "https://x/y.plg"
+  }
+ ]
+}

@@ -1,0 +1,38 @@
+Menu="Chronostasis:1"
+Title="Check"
+Tag="clock-o"
+Markdown="false"
+---
+<?php
+/* Everything dynamic is drawn by assets/chronostasis.js from include/status.php with textContent only. */
+$cs_root = ($docroot ?? '/usr/local/emhttp') . '/plugins/unraid-chronostasis';
+$cs_v = substr(md5(@md5_file("$cs_root/assets/chronostasis.js") . @md5_file("$cs_root/assets/chronostasis.css")), 0, 10);
+?>
+<link rel="stylesheet" href="/plugins/unraid-chronostasis/assets/chronostasis.css?v=<?=$cs_v?>">
+<div class="cs" id="cs-root" data-base="/plugins/unraid-chronostasis" data-csrf="<?=htmlspecialchars($var['csrf_token'] ?? '', ENT_QUOTES)?>">
+  <p>Compares the old settings of each Docker container with its template in Community Applications, and helps you
+  upgrade them. A difference is not always a problem, and the template can be the older side. Nothing happens to a
+  container until you press Apply in Unraid's form. Values are shown only on your own server; they are never in reports or in anything you copy or paste.</p>
+  <div class="cs-bar">
+    <span class="cs-status" id="cs-status" role="status">Loading...</span>
+    <button type="button" id="cs-check" title="Compares the old settings of each container with its template. Nothing is changed.">Check now</button>
+  </div>
+  <div id="cs-summary"></div>
+  <div class="cs-choices">
+    <div class="cs-choice" id="cs-choice-issues" hidden>
+      <button type="button" id="cs-walkstart" title="Shows them one at a time. Nothing is changed.">Go through the ones to check</button>
+      <span id="cs-choice-issues-text"></span>
+    </div>
+    <div class="cs-choice" id="cs-choice-others" hidden>
+      <button type="button" id="cs-walkother" title="Shows them one at a time. Nothing is changed.">Go through the other differences</button>
+      <span id="cs-choice-others-text"></span>
+    </div>
+  </div>
+  <div id="cs-jobs"></div>
+  <div class="cs-walk" id="cs-walk" hidden></div>
+  <div class="cs-filter" id="cs-filter" hidden>
+    <label title="Also lists the apps where old settings and template match."><input type="checkbox" id="cs-all"> Show apps with no differences</label>
+  </div>
+  <div id="cs-apps"></div>
+</div>
+<script src="/plugins/unraid-chronostasis/assets/chronostasis.js?v=<?=$cs_v?>"></script>
