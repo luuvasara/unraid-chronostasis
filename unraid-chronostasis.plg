@@ -2,7 +2,7 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "unraid-chronostasis">
   <!ENTITY author    "Chronostasis project">
-  <!ENTITY version   "2026.11.07c">
+  <!ENTITY version   "2026.11.07d">
   <!ENTITY gitURL    "https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
   <!ENTITY pkg       "&name;-&version;-x86_64-1.txz">
@@ -16,6 +16,8 @@
         launch="Settings/Chronostasis" pluginURL="&pluginURL;" support="https://github.com/luuvasara/unraid-chronostasis/issues">
 
 <CHANGES>
+###2026.11.07d
+- The extra networks warning says them, not it.
 ###2026.11.07c
 - A Device the template leaves for you to fill in is not listed as moved.
 ###2026.11.07b

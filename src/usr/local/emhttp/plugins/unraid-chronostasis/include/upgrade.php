@@ -188,12 +188,12 @@ function cs_drop_warnings(string $xml): array {
   $have = [];
   foreach ($d->documentElement->childNodes as $n) if ($n instanceof DOMElement && trim($n->textContent) !== '') $have[$n->tagName] = trim($n->textContent);
   $keeps = cs_form_keeps(); $w = [];
-  $why = "Unraid's form saves only the fields it knows, so pressing Apply on this Unraid version removes it from the settings.";
+  $why = fn($what) => "Unraid's form saves only the fields it knows, so pressing Apply on this Unraid version removes $what from the settings.";
   if (isset($have['Memory']) && !$keeps['Memory'])
-    $w[] = 'These settings have a memory limit (' . $have['Memory'] . '), and the form in this Unraid version has no field for it. ' . $why
+    $w[] = 'These settings have a memory limit (' . $have['Memory'] . '), and the form in this Unraid version has no field for it. ' . $why('it')
          . ' The container then runs with no limit. To keep the limit, add --memory=' . $have['Memory'] . ' to Extra Parameters in the form before you press Apply. Unraid 7.4 and newer have the field.';
   if (isset($have['ExtraNetworks']) && !$keeps['ExtraNetworks'])
-    $w[] = 'These settings connect the container to more networks (' . $have['ExtraNetworks'] . '), and the form in this Unraid version has no field for them. ' . $why
+    $w[] = 'These settings connect the container to more networks (' . $have['ExtraNetworks'] . '), and the form in this Unraid version has no field for them. ' . $why('them')
          . ' The container then has only its main network. After Apply you can connect it again with docker network connect, once per network; that lasts until the container is next recreated. Unraid 7.4 and newer have the field.';
   return $w;
 }
