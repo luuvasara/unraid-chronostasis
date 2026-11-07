@@ -2,6 +2,9 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.07d
+- The extra networks warning says them, not it.
+
 ## 2026.11.07c
 - A Device the template leaves for you to fill in is not listed as moved.
 
