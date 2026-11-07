@@ -10,7 +10,7 @@
 const CS_TINDEX_FORMATS = [1, 2, 3]; // 2 adds per-version secret info: masked and secret-like field keys; 3 adds the app list (not read here)
 
 function cs_tindex_url(): string {
-  return getenv('CS_TINDEX_URL') ?: 'https://luuvasara.github.io/unraid-template-history/index.json.gz';
+  return getenv('CS_TINDEX_URL') ?: 'https://luuvasara.github.io/unraid-app-chronicle/index.json.gz';
 }
 /* Cached under /var/local/emhttp (RAM, root only), not /tmp: nobody else can plant or swap the file. */
 function cs_tindex_file(): string {

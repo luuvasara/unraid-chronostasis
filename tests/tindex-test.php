@@ -38,6 +38,9 @@ t(cs_tindex_decode(gzencode(json_encode($ix2))) !== null && cs_tindex_decode(gze
 $ix3 = $ix2; $ix3['format'] = 3; $ix3['apps'] = ['https://raw.githubusercontent.com/Own/Repo/main/a.xml#Own\'s Repository' => ['name' => 'a', 'removed' => true]];
 t(cs_tindex_decode(gzencode(json_encode($ix3))) !== null, 'format 3 (with the app list) is accepted');
 t(cs_tindex_decode(gzencode(json_encode(['format' => 4, 'files' => [], 'sets' => []]))) === null, 'format 4 is refused');
+$u = getenv('CS_TINDEX_URL'); putenv('CS_TINDEX_URL');
+t(cs_tindex_url() === 'https://luuvasara.github.io/unraid-app-chronicle/index.json.gz', 'default index address is the App Chronicle');
+if ($u !== false) putenv("CS_TINDEX_URL=$u");
 $b = cs_tindex_base($ix2, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml', $v2);
 t($b && $b['commit'] === 'ddddddd' && $b['secrets']['m'] === [] && $b['later'] === 1, 'format 2: same set twice, the newest entry wins, its secret info is returned');
 $s = cs_tindex_secrets($ix2, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml');
