@@ -41,7 +41,7 @@ RC=$?; grep -q 'Could not get the Community' "$W/run2/state.json" && [ "$RC" = 1
 grep -rIl -iE 'python|\.py\b' "$P" && bad "python in the plugin" || ok "no Python in the plugin"
 # status.php gives the page the counts, and the flag behind them, from the report on disk
 J=$(CS_CACHE=$W/cache CS_RUN=$W/run CS_CONFIG=$W/noconfig php "$P/include/status.php")
-python3 -I -c 'import json,sys; c=json.loads(sys.argv[1])["report"]["counts"]; sys.exit(0 if (c["issues"],c["issueApps"])==(7,5) and c["others"]==22 else 1)' "$J" && ok "status.php: 7 to check on 5 apps (no dead address without the status check), 22 other differences" || bad "status.php counts: $J"
+python3 -I -c 'import json,sys; c=json.loads(sys.argv[1])["report"]["counts"]; sys.exit(0 if (c["issues"],c["issueApps"])==(6,4) and c["others"]==22 else 1)' "$J" && ok "status.php: 6 to check on 4 apps (no dead address without the status check), 22 other differences" || bad "status.php counts: $J"
 # a report saved by the version before: field differences stay quiet until the next check
 OLD=$W/oldcache; mkdir -p "$OLD"
 printf '%s' '{"apps":[{"name":"a","confidence":"high","feedUrl":"","savedUrl":"","findings":[{"kind":"new","key":"k","label":"X","fp":"abc"}]}]}' >"$OLD/report.json"

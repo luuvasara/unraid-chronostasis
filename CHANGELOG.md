@@ -2,6 +2,10 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.07b
+- A field that keeps its name and type but sits at another target in the template is no longer a difference to work through or upgrade. The template author moved it; your setting is kept as it is. Each one is mentioned in one line under the app, for reference.
+- A variable with a new target is therefore no longer counted as something to check.
+
 ## 2026.11.07a
 - Before Unraid's form opens, it says when Apply would remove a memory limit or extra networks from the settings, and why: the form on Unraid before 7.4 has no field for them and saves only the fields it knows.
 - It says what to do instead: for a memory limit, add --memory with the limit to Extra Parameters; extra networks can be connected again with docker network connect after Apply.
