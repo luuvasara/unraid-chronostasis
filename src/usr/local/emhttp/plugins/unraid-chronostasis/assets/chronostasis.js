@@ -44,14 +44,14 @@
     'Try again with the upgraded settings': 'Opens Unraid\'s form with the upgraded settings, where you can tweak them.' + APPLY_ONLY,
     'Go back to the old settings': 'Opens Unraid\'s form with the old settings from the backup.' + APPLY_ONLY,
     'Open folder': 'Opens this folder in Unraid\'s file browser in a new tab.',
-    'Download': 'Saves a copy of this backup on your computer.'
+    'Download': 'Saves a copy of this backup on your computer.',
+    'Open Unraid\'s form anyway': 'Opens the form as it is. Nothing changes until you press Apply there.',
+    'Cancel': 'Closes this and opens nothing.'
   };
   var SELECT_TIPS = {
     'cs-other': 'The field to compare with. The comparison above follows your choice.',
     'cs-why': 'Why you think this is a rename. It goes in the report at Finish.',
-    'cs-src': 'Where that can be checked. It goes in the report at Finish.',
-    'Open Unraid\'s form anyway': 'Opens the form as it is. Nothing changes until you press Apply there.',
-    'Cancel': 'Closes this and opens nothing.'
+    'cs-src': 'Where that can be checked. It goes in the report at Finish.'
   };
   function el(tag, cls, text) {
     var e = document.createElement(tag);
