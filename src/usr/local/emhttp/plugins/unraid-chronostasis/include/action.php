@@ -51,12 +51,15 @@ if (in_array($a, ['plan', 'open', 'jobs', 'retry', 'cancel', 'putback'], true)) 
   require_once __DIR__ . '/upgrade.php';
   if ($a === 'jobs') { $js = cs_jobs_state(); $by = []; foreach ($js as $j) $by[$j['app']] = $j; cs_out(200, ['ok' => true, 'jobs' => $js, 'gone' => cs_gone_backups($by)]); }
   $app = is_string($_POST['app'] ?? null) ? $_POST['app'] : '';
+  $confirmed = ($_POST['confirmed'] ?? '') === '1';
   if ($a === 'retry') {
-    $r = cs_upgrade_retry($app, is_string($_POST['which'] ?? null) ? $_POST['which'] : '');
+    $r = cs_upgrade_retry($app, is_string($_POST['which'] ?? null) ? $_POST['which'] : '', $confirmed);
+    if (isset($r['warn'])) cs_out(200, ['ok' => false] + $r);
     cs_out(isset($r['url']) ? 200 : 409, isset($r['url']) ? ['ok' => true] + $r : ['ok' => false] + $r);
   }
   if ($a === 'putback') {
-    $r = cs_upgrade_putback($app, is_string($_POST['file'] ?? null) ? $_POST['file'] : '');
+    $r = cs_upgrade_putback($app, is_string($_POST['file'] ?? null) ? $_POST['file'] : '', $confirmed);
+    if (isset($r['warn'])) cs_out(200, ['ok' => false] + $r);
     cs_out(isset($r['url']) ? 200 : 409, isset($r['url']) ? ['ok' => true] + $r : ['ok' => false] + $r);
   }
   if ($a === 'cancel') { $ok = cs_upgrade_cancel($app); cs_out($ok ? 200 : 409, ['ok' => $ok]); }

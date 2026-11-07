@@ -70,6 +70,8 @@ If Apply fails, Unraid will already have removed the container. That is how Unra
 
 Unraid does not keep every error. To find it, Chronostasis can check the image again and create a temporary container with only the image and the extra parameters. That container never starts and is removed at once.
 
+Unraid's form saves only the fields it knows. A memory limit (`<Memory>`) and extra networks (`<ExtraNetworks>`) have their own fields from Unraid 7.4 on; the form in 7.3 and 6.12 has neither. So if the settings to open hold one of them and the form on your server has no field for it, Chronostasis says so before the form opens: pressing Apply there would remove it. It says what to do instead: for a memory limit, add `--memory=<the limit>` to Extra Parameters in the form; extra networks can be connected again with `docker network connect` after Apply, until the container is next recreated. Chronostasis reads this from the form's own code, not from the version number.
+
 Compose containers are left alone. An app that stays on its own version says so: the comparison is with the current template, which may describe a newer version.
 
 Backups stay on the flash drive. If an app's container and saved settings are gone, its backups are listed on the page and open in Unraid's form.

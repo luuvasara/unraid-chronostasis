@@ -173,6 +173,30 @@ function cs_upgrade_build(string $savedFile, array $tpl, array $ops): ?array {
   usort($rows, fn($a, $b) => (int)!empty($b['first']) <=> (int)!empty($a['first']));
   return ['xml' => $d->saveXML(), 'rows' => $rows];
 }
+/* Which of the newer elements this Unraid's form keeps. postToXML() in the form writes only the elements it knows.
+ * <Memory> came with webgui PR #2673 (commit 4d18192fb) and <ExtraNetworks> with PR #2687 (commit 38e559efc), both
+ * first in 7.4.0-beta.0.1; 7.3.4 and 6.12 have neither. Read from the form's own code, so a backport counts too. */
+function cs_form_keeps(): array {
+  $src = (string)@file_get_contents(getenv('CS_DOCKERHELPERS') ?: '/usr/local/emhttp/plugins/dynamix.docker.manager/include/Helpers.php');
+  if ($src === '') return ['Memory' => true, 'ExtraNetworks' => true];
+  return ['Memory' => strpos($src, '$xml->Memory') !== false, 'ExtraNetworks' => strpos($src, '$xml->ExtraNetworks') !== false];
+}
+/* What Apply in the form would drop from these settings, with the reason and what to do instead. */
+function cs_drop_warnings(string $xml): array {
+  $d = new DOMDocument();
+  if (!@$d->loadXML($xml, LIBXML_NONET)) return [];
+  $have = [];
+  foreach ($d->documentElement->childNodes as $n) if ($n instanceof DOMElement && trim($n->textContent) !== '') $have[$n->tagName] = trim($n->textContent);
+  $keeps = cs_form_keeps(); $w = [];
+  $why = "Unraid's form saves only the fields it knows, so pressing Apply on this Unraid version removes it from the settings.";
+  if (isset($have['Memory']) && !$keeps['Memory'])
+    $w[] = 'These settings have a memory limit (' . $have['Memory'] . '), and the form in this Unraid version has no field for it. ' . $why
+         . ' The container then runs with no limit. To keep the limit, add --memory=' . $have['Memory'] . ' to Extra Parameters in the form before you press Apply. Unraid 7.4 and newer have the field.';
+  if (isset($have['ExtraNetworks']) && !$keeps['ExtraNetworks'])
+    $w[] = 'These settings connect the container to more networks (' . $have['ExtraNetworks'] . '), and the form in this Unraid version has no field for them. ' . $why
+         . ' The container then has only its main network. After Apply you can connect it again with docker network connect, once per network; that lasts until the container is next recreated. Unraid 7.4 and newer have the field.';
+  return $w;
+}
 /* What the form would change on its own, by field name only. */
 function cs_upgrade_warnings(string $xml): array {
   $d = new DOMDocument();
@@ -185,7 +209,7 @@ function cs_upgrade_warnings(string $xml): array {
     if ($v === '' && $def !== '' && strtolower($c->getAttribute('Required')) !== 'true') $empty[] = $l;
     if ($v !== '' && strpos($def, '|') !== false && !in_array($v, explode('|', $def), true)) $list[] = $l;
   }
-  $w = [];
+  $w = cs_drop_warnings($xml);
   if ($tags) $w[] = 'Unraid removes < and > from a value when the form loads: ' . implode(', ', $tags) . '. Check these in the form.';
   if ($empty) $w[] = 'Left empty, so Unraid fills in the template default: ' . implode(', ', $empty) . '.';
   if ($list) $w[] = "Unraid's form shows a list here and the value is not on it, so it would pick the first option: " . implode(', ', $list) . '.';
@@ -286,9 +310,9 @@ function cs_upgrade_open(array $a, array $tpl, array $answers): array {
   });
 }
 /* After a failed Apply, or from the app's row. */
-function cs_upgrade_retry(string $app, string $which): array {
+function cs_upgrade_retry(string $app, string $which, bool $confirmed = false): array {
   if (!cs_safe_name($app) || !in_array($which, ['upgraded', 'old'], true)) return ['error' => 'invalid app'];
-  return cs_jobs_locked(function (array &$jobs) use ($app, $which) {
+  return cs_jobs_locked(function (array &$jobs) use ($app, $which, $confirmed) {
     if (!isset($jobs[$app])) return ['error' => 'Nothing is known about this app.'];
     $j = &$jobs[$app];
     $saved = rtrim(cs_path('templates'), '/') . '/' . basename((string)$j['file']);
@@ -298,6 +322,7 @@ function cs_upgrade_retry(string $app, string $which): array {
       $open = $saved;
     }
     if (!is_file($open)) return ['error' => 'The file is not there any more: ' . $open];
+    if (!$confirmed && ($w = cs_drop_warnings((string)@file_get_contents($open)))) return ['warn' => $w];
     $prior = array_intersect_key($j, array_flip(['phase', 'attempt', 'baseId', 'baseStamp', 'container', 'errorFrom', 'checked', 'differs']));
     cs_baseline($j, $app, $saved);
     $j['attempt'] = $which; $j['prior'] = $prior;
@@ -321,10 +346,11 @@ function cs_gone_backups(array $jobs): array {
   return $out;
 }
 /* Opens a gone app's backup in Unraid's form. Nothing is written until Apply. */
-function cs_upgrade_putback(string $app, string $file): array {
+function cs_upgrade_putback(string $app, string $file, bool $confirmed = false): array {
   if (!cs_safe_name($app) || basename($file) !== $file || !preg_match('/^my-.+\.xml$/', $file)) return ['error' => 'invalid app'];
   $open = rtrim(cs_path('config'), '/') . "/backups/$app/$file";
   if (!is_file($open)) return ['error' => 'The file is not there any more: ' . $open];
+  if (!$confirmed && ($w = cs_drop_warnings((string)@file_get_contents($open)))) return ['warn' => $w];
   return cs_jobs_locked(function (array &$jobs) use ($app, $open) {
     $saved = rtrim(cs_path('templates'), '/') . "/my-$app.xml";
     if (is_file($saved) || cs_container($app) !== null) return ['error' => 'This app is back already. Press Check now.'];

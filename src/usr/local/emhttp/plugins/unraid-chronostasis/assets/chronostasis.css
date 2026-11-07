@@ -100,3 +100,5 @@
 .cs .cs-guide h4 { margin: 8px 0 4px; }
 .cs .cs-guide ul { margin: 0; }
 .cs .cs-links a { display: inline-block; min-height: 24px; line-height: 24px; }
+.cs-dialog { max-width: 640px; border: 1px solid var(--cs-border); border-radius: 4px; padding: 16px 20px; }
+.cs-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }

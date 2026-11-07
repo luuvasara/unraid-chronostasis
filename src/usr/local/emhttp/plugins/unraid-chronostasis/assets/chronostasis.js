@@ -49,7 +49,9 @@
   var SELECT_TIPS = {
     'cs-other': 'The field to compare with. The comparison above follows your choice.',
     'cs-why': 'Why you think this is a rename. It goes in the report at Finish.',
-    'cs-src': 'Where that can be checked. It goes in the report at Finish.'
+    'cs-src': 'Where that can be checked. It goes in the report at Finish.',
+    'Open Unraid\'s form anyway': 'Opens the form as it is. Nothing changes until you press Apply there.',
+    'Cancel': 'Closes this and opens nothing.'
   };
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -602,10 +604,30 @@
     return box;
   }
   function backupInto(parent, job) { parent.appendChild(pathCode(job.backup)); parent.appendChild(pathLinks(job.backup)); }
+  /* What Apply in this Unraid's form would drop. A second click opens the form, so the new tab still counts as a click. */
+  function dropDialog(list, go) {
+    var d = el('dialog', 'cs-dialog');
+    d.appendChild(el('h3', '', 'Apply would remove part of these settings'));
+    var ul = el('ul', 'cs-warns'); list.forEach(function (t) { ul.appendChild(el('li', '', t)); }); d.appendChild(ul);
+    var bar = el('div', 'cs-answers');
+    var ok = el('button', 'cs-answer', 'Open Unraid\'s form anyway'); ok.type = 'button';
+    var no = el('button', 'cs-answer', 'Cancel'); no.type = 'button';
+    ok.addEventListener('click', function () { d.close(); go(); });
+    no.addEventListener('click', function () { d.close(); });
+    d.addEventListener('close', function () { d.remove(); });
+    bar.appendChild(ok); bar.appendChild(no); d.appendChild(bar);
+    var root = document.querySelector('.cs') || document.body;
+    /* 6.12 has no theme variables: take the page's own colours, so the dialog reads in every theme */
+    var bg = [document.body, document.documentElement].map(function (x) { return getComputedStyle(x).backgroundColor; }).filter(function (c) { return c && c !== 'transparent' && c !== 'rgba(0, 0, 0, 0)'; })[0];
+    if (bg) d.style.backgroundColor = bg;
+    d.style.color = getComputedStyle(root).color;
+    root.appendChild(d); d.showModal();
+  }
   /* Open a tab now, while the click counts, then send it to the address: a tab opened after an answer is blocked. */
   function toForm(data, onError) {
     var w = window.open('', '_blank');
     return post(data).then(function (r) {
+      if (r.warn && r.warn.length) { if (w) w.close(); dropDialog(r.warn, function () { toForm(Object.assign({}, data, { confirmed: '1' }), onError); }); return; }
       if (!r.ok || !r.url) { if (w) w.close(); onError(r.error || 'Could not open Unraid\'s form.'); return; }
       if (w) w.location.href = r.url; else window.location.href = r.url;
       pollJobs();
