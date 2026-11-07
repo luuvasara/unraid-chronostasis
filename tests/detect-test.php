@@ -61,8 +61,7 @@ $warned = fn($a) => array_values(array_map(fn($f) => ($f['kind'] === 'renamed' ?
 t($warned($A['shape-required-path']) === ['/data'], 'shape: a required Path with no default, missing: warning');
 t($warned($A['shape-required-path-default']) === [] && $kinds($A['shape-required-path-default'], 'new') === ['/app/logs'], 'shape: a required Path with a default, missing: no warning, still listed');
 t($warned($A['shape-optional-field']) === [] && $kinds($A['shape-optional-field'], 'new') === ['/data/image-cache'], 'shape: an optional field, missing: no warning, still listed');
-t($warned($A['shape-variable-target']) === ['FROM_EMAIL_ADDRESS>FROM_ADDRESS'], 'shape: a Variable with a new Target: warning');
-t(count($A['shape-variable-target']['findings']) === 1, 'shape: the rename is one finding, not a new field plus an old one');
+t($A['shape-variable-target']['findings'] === [] && $A['shape-variable-target']['moved'] === [['name' => 'Email - From Address', 'type' => 'Variable', 'saved' => 'FROM_EMAIL_ADDRESS', 'template' => 'FROM_ADDRESS']] , 'shape: a Variable with a new Target is no finding, listed once as moved');
 t($warned($A['shape-default-only']) === [] && $kinds($A['shape-default-only'], 'default') === ['LOG_LEVEL'], 'shape: differing Default only: no warning, still listed');
 
 /* edges of the rule, one app each */
@@ -89,11 +88,12 @@ $off = $pair($c('Off', 'OLD', 'Disabled:Variable'), [$rq + ['Name' => 'Off', 'Ta
 t($warned($off) === [] && $off['disabledFields'] === ['OLD'], 'a field turned off in the copy is no rename');
 t($pair($c('Disabled: Old', 'OLD', 'Variable'), [['Target' => '/other']])['disabledFields'] === ['OLD'], 'a "Disabled:" name in the copy is turned off');
 $mv = $pair($c('Media', '/Unite/Media', 'Path', 'rw'), [$rq + ['Name' => 'Media', 'Target' => '/movies', 'Mode' => 'rw']]);
-t($warned($mv) === [] && $kinds($mv, 'new') === ['/movies'] && $kinds($mv, 'yours') === ['/Unite/Media'], 'a Path under the same Name at another Target: no warning, still listed');
-t($warned($pair($c('Same', 'OLD', 'Variable'), [['Name' => 'same ', 'Target' => 'NEW', 'Type' => 'Variable']])) === ['OLD>NEW'], 'an optional Variable with a new Target: warning; the Name ignores case and spaces');
+t($mv['findings'] === [] && $mv['moved'] === [['name' => 'Media', 'type' => 'Path', 'saved' => '/Unite/Media', 'template' => '/movies']], 'a Path under the same Name at another Target: no finding, no gap, listed once as moved');
+$mvv = $pair($c('Same', 'OLD', 'Variable'), [['Name' => 'same ', 'Target' => 'NEW', 'Type' => 'Variable']]);
+t($mvv['findings'] === [] && array_column($mvv['moved'], 'saved') === ['OLD'], 'a Variable with a new Target: moved, not a finding; the Name ignores case and spaces');
 t($warned($pair($c('', 'OLD', 'Variable'), [['Name' => '', 'Target' => 'NEW', 'Type' => 'Variable']])) === [], 'an empty Name pairs with nothing');
 $two = $pair($c('Same', 'OLD', 'Variable'), [['Name' => 'Same', 'Target' => 'A', 'Type' => 'Variable'], ['Name' => 'Same', 'Target' => 'B', 'Type' => 'Variable']]);
-t($warned($two) === ['OLD>A'] && $kinds($two, 'new') === ['B'], 'one saved field pairs once');
+t(array_column($two['moved'], 'template') === ['A'] && $kinds($two, 'new') === ['B'], 'one saved field pairs once');
 t($warned($pair('', [$rq + ['Target' => '9000', 'Type' => 'Port', 'Mode' => 'tcp']], ['network' => 'container:vpn'])) === [], 'a required Port of a container-networked app does not apply: no warning');
 t($warned($pair($c('Same', 'K', 'Variable'), [['Name' => 'Same', 'Target' => 'K', 'Type' => 'Variable', 'Required' => 'true']])) === [], 'a field that became required but is there: no warning');
 
@@ -105,18 +105,18 @@ t($checked('moved') === ['address', 'moderation', 'image'], 'moved image, other 
 t($checked('dead') === ['address', 'moderation'], 'a dead address and deprecated are to check');
 t($checked('alpha') === [], 'field differences with no warning are not to check');
 t(count($byName['alpha']['findings']) > 0, 'and they are still in the report');
-t($checked('shape-required-path') === ['new'] && $checked('shape-variable-target') === ['renamed'], 'the two rules are to check');
+t($checked('shape-required-path') === ['new'] && $checked('shape-variable-target') === [], 'a required gap is to check, a moved field is not');
 $all = 0; foreach ($rc['apps'] as $a) $all += count($a['findings']);
-t(($rc['counts']['issues'] ?? null) === 8 && ($rc['counts']['issueApps'] ?? null) === 5, 'summary: 8 to check on 5 apps');
-t(($rc['counts']['others'] ?? null) === $all - 8, 'summary: every other finding is counted as an other difference');
+t(($rc['counts']['issues'] ?? null) === 7 && ($rc['counts']['issueApps'] ?? null) === 4, 'summary: 7 to check on 4 apps');
+t(($rc['counts']['others'] ?? null) === $all - 7, 'summary: every other finding is counted as an other difference');
 t(($rc['counts']['otherApps'] ?? null) === 6, 'summary: apps with other differences');
-t($rc['counts']['differ'] === 10, 'summary: apps that differ at all, unchanged');
+t($rc['counts']['differ'] === 9, 'summary: apps that differ at all: the moved-only app is the same now');
 $pos = array_flip(array_column($rc['apps'], 'name'));
 t($pos['moved'] < $pos['alpha'] && $pos['shape-required-path'] < $pos['shape-optional-field'], 'apps with something to check are listed before apps with only other differences');
 $dm = cs_apply_dismissed(['apps' => array_values($A)], array_column(array_map(fn($f) => ['id' => $f['id'], 'fp' => $f['fp']], $byName['shape-required-path']['findings']), null, 'id'));
-t(($dm['counts']['issues'] ?? null) === 7, 'a dismissed warning leaves the count');
+t(($dm['counts']['issues'] ?? null) === 6, 'a dismissed warning leaves the count');
 $wt = cs_share_text($rc, [], [], '2026.11.05', '7.3.4');
-t(strpos($wt, 'Variable with a new target: FROM_EMAIL_ADDRESS to FROM_ADDRESS') !== false && strpos($wt, 'Path /data (required, no default)') !== false, 'the share text names both rules');
+t(strpos($wt, 'FROM_EMAIL_ADDRESS') === false && strpos($wt, 'Path /data (required, no default)') !== false, 'the share text names the required gap, not a moved field');
 
 t($kinds($A['child'], 'new') === [] && $A['child']['notApplicable'] === ['9000/tcp'], 'ports of a container-networked app are not findings');
 t(cs_is_container_net('bridge', '--network=container:vpn') === true, 'container network in Extra Parameters');
@@ -185,7 +185,7 @@ t(($val($repo, 'shape-pair', 'variable:MOVIE_DIR')['value'] ?? null) === '/movie
 t(($val($repo, 'shape-pair', 'port:8088/tcp')['value'] ?? null) === '18088', 'a Port gives the host port');
 t(($val($repo, 'shape-pair', 'path:/media')['value'] ?? null) === '/mnt/user/FakeMedia', 'a Path gives the host path');
 t(($val($repo, 'shape-pair', 'variable:LOG_LEVEL')['value'] ?? null) === 'FAKEVALUE-level', 'a default change gives the saved value');
-t(($val($repo, 'shape-variable-target', 'variable:FROM_EMAIL_ADDRESS')['value'] ?? null) === 'SECRETVALUE9876', 'a renamed field gives the saved value');
+t($val($repo, 'shape-variable-target', 'variable:FROM_EMAIL_ADDRESS') === null, 'a moved field is no issue, so its value is not given');
 $h = $val($repo, 'shape-pair', 'variable:OLD_TOKEN');
 t(is_array($h) && $h === ['state' => 'hidden'], 'a masked field is hidden, with no value in the answer');
 $fake = $repo; foreach ($fake['apps'] as &$ap) if ($ap['name'] === 'shape-pair') foreach ($ap['findings'] as &$ff) if ($ff['key'] === 'variable:OLD_TOKEN') $ff['mask'] = false; unset($ap, $ff);
@@ -234,7 +234,7 @@ t(cs_pair_score(['label' => 'A', 'name' => '', 'default' => sha1('')], ['label' 
 $g = $pair($xml([$field('Aa', 'MOVIE_DIR')]), $feedOf([$field('Dd', 'MOVIES_DIR'), $field('Ee', 'MOVIES_DIRS')]));
 t((($find($g, 'new', 'MOVIES_DIR')['guess'] ?? '') === 'MOVIE_DIR') !== (($find($g, 'new', 'MOVIES_DIRS')['guess'] ?? '') === 'MOVIE_DIR'), 'guess: one saved field is suggested for one new field only');
 $g = $pair($c('Media', '/Unite/Media', 'Path', 'rw'), [['Name' => 'Media', 'Target' => '/movies', 'Mode' => 'rw']]);
-t(($find($g, 'new', '/movies')['guess'] ?? '') === '/Unite/Media', 'guess: a Path under the same Name is the first guess');
+t($find($g, 'new', '/movies') === [] && count($g['moved']) === 1, 'guess: a Path under the same Name is moved, nothing to guess');
 $off2 = $pair($c('Aa', 'MOVIE_DIR', 'Disabled:Variable'), $feedOf([$field('Dd', 'MOVIES_DIR')]));
 t(($find($off2, 'new', 'MOVIES_DIR')['cands'] ?? ['x']) === [], 'guess: a field turned off is not offered');
 

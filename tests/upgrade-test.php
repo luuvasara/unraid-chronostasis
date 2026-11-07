@@ -16,11 +16,8 @@ $report = fn() => cs_apply_dismissed(['apps' => [cs_app(cs_read_template($saved)
 $a = $report()['apps'][0];
 $find = fn($k, $l) => array_values(array_filter($a['findings'], fn($f) => $f['kind'] === $k && $f['label'] === $l))[0] ?? null;
 $answers = [['id' => $find('new', 'MOVIES_DIR')['id'], 'type' => 'same', 'other' => $find('yours', 'MOVIE_DIR')['id']],
-  ['id' => $find('renamed', 'FROM_ADDRESS')['id'], 'type' => 'renamed'],
   ['id' => $find('new', 'LOG_FORMAT')['id'], 'type' => 'include'],
   ['id' => $find('new', '/downloads')['id'], 'type' => 'include'],
-  ['id' => $find('new', '/media')['id'], 'type' => 'same', 'other' => $find('yours', '/mnt/media')['id']],
-  ['id' => $find('new', '8181/tcp')['id'], 'type' => 'same', 'other' => $find('yours', '8080/tcp')['id']],
   ['id' => $find('yours', 'MY_EXTRA_FLAG')['id'], 'type' => 'own']];
 $up = "|running|2020-01-01T00:00:00.000Z|dockerman||bridge|0|";
 $set = function (string $name, ?string $line) use ($W) { $f = "$W/fake/c/$name"; if ($line === null) @unlink($f); else file_put_contents($f, "$line\n"); };
@@ -30,22 +27,23 @@ $b = cs_upgrade_build($saved, $tpl, cs_upgrade_ops($a, $answers));
 $x = simplexml_load_string($b['xml']);
 $cfg = []; foreach ($x->Config as $c) $cfg[(string)$c['Target']] = $c;
 t(isset($cfg['MOVIES_DIR']) && (string)$cfg['MOVIES_DIR'] === '/movies' && !isset($cfg['MOVIE_DIR']), 'a match takes the template key and keeps the value');
-t(isset($cfg['FROM_ADDRESS']) && (string)$cfg['FROM_ADDRESS'] === 'films@example.com', 'a rename keeps the value');
+t(!isset($cfg['FROM_ADDRESS']) && (string)$cfg['FROM_EMAIL_ADDRESS'] === 'films@example.com', 'a Variable the template moved stays as saved');
+t(!$find('renamed', 'FROM_ADDRESS') && !$find('new', '/media') && !$find('new', '8181/tcp') && count($a['moved']) === 3, 'moved fields are no findings, listed as moved');
 t((string)$cfg['LOG_FORMAT'] === 'json', 'Include it takes the template default');
 t((string)$cfg['MY_EXTRA_FLAG'] === '--fast-scan', 'your own field stays');
 t(!isset($cfg['FRESH_OPT']), 'a field you did not include stays out');
 t((string)$cfg['OLD_API_TOKEN'] === 'made-up-secret-that-must-not-show' && (string)$cfg['OLD_API_TOKEN']['Mask'] === 'true', 'a masked value survives, still masked');
 t((string)$cfg['LOG_LEVEL'] === 'warn' && (string)$cfg['LOG_LEVEL']['Default'] === 'debug', 'your value stays, the default is the template one');
 t((string)$cfg['WORKERS'] === '4' && (string)$cfg['WORKERS']['Required'] === 'true', 'the required flag follows the template');
-t((string)$cfg['/media'] === '/mnt/user/Films', 'a moved path keeps the host path');
-t((string)$cfg['8181'] === '18080' && strpos($b['xml'], '[PORT:8181]') !== false && strpos($b['xml'], '[PORT:8080]') === false, 'a port keeps its host port and the web address follows');
+t(!isset($cfg['/media']) && (string)$cfg['/mnt/media'] === '/mnt/user/Films', 'a Path the template moved stays as saved');
+t(!isset($cfg['8181']) && (string)$cfg['8080'] === '18080' && strpos($b['xml'], '[PORT:8080]') !== false, 'a Port the template moved stays as saved, and so does the web address');
 t((string)$x->Config[0]['Target'] === '/downloads' && (string)$x->Config[0] === '' && (string)$x->Config[0]['Display'] === 'always', 'a required field left empty comes first');
 t((string)$x->Name === 'filmshelf', 'the name stays');
 $dump = json_encode($b['rows']);
 t(strpos($dump, 'made-up-secret') === false, 'the rows hold no masked value');
 t($b['rows'][0]['new'][1] === "you fill this in, in Unraid's form", 'the empty required field is the first row');
 $heads = array_column($b['rows'], 'head');
-t(in_array('Same name in the template, new key', $heads, true) && in_array('Path moved', $heads, true) && in_array('Port changed', $heads, true) && in_array('You answered Yes, same field', $heads, true) && in_array('You answered Include it', $heads, true) && in_array('New, required, no default', $heads, true), 'each change has its heading');
+t(in_array('You answered Yes, same field', $heads, true) && in_array('You answered Include it', $heads, true) && in_array('New, required, no default', $heads, true) && !in_array('Path moved', $heads, true), 'each change has its heading, and no moved field is a change');
 $before = md5_file($saved);
 $p = cs_plan_app($a, $tpl, $answers);
 t($p !== null && !$p['blocks'] && md5_file($saved) === $before && !glob("$W/cfg/backups/*"), 'the plan writes nothing');

@@ -285,7 +285,7 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
   $app = $m['entry'];
   $r = ['name' => $t['name'], 'file' => $t['file'] ?? '', 'stamp' => $t['stamp'] ?? '', 'pinned' => $app ? cs_pinned($t['repository'], (string)$app['Repository']) : '', 'repository' => $t['repository'], 'how' => $m['how'], 'confidence' => $m['confidence'],
         'candidates' => $m['candidates'], 'support' => $t['support'], 'project' => $t['project'], 'containerNet' => $t['containerNet'],
-        'source' => $app ? (string)($app['Repo'] ?? '') : '', 'findings' => [], 'disabledFields' => [], 'notApplicable' => [],
+        'source' => $app ? (string)($app['Repo'] ?? '') : '', 'findings' => [], 'disabledFields' => [], 'notApplicable' => [], 'moved' => [],
         'feedName' => $app ? (string)($app['Name'] ?? '') : '', 'feedImage' => $app ? (string)$app['Repository'] : '',
         'savedUrl' => $t['url'], 'feedUrl' => $app ? (string)($app['TemplateURL'] ?? $app['caTemplateURL'] ?? '') : ''];
   if ($app) {
@@ -321,24 +321,20 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
   if ($t['legacy']) { $r['how'] .= ', old template format'; return $r; }
   $L = $t['fields'];
   $na = fn($f) => $t['containerNet'] && strtolower($f['type']) === 'port';
-  /* A moved Variable is a rename, one finding. A moved Path, Port or Device is the user's own mount or hardware, so
-     it stays a plain new/only-yours pair and is not a gap. */
+  /* Same Name and Type at another Target: the template author moved the field. That is not an update of old settings,
+     so it is no finding and nothing changes it; the app lists it once, for reference. */
   $moved = cs_moved_fields($R, $L);
+  $r['moved'] = [];
+  foreach ($moved as $rk => $lk) $r['moved'][] = ['name' => $R[$rk]['name'], 'type' => $R[$rk]['type'], 'saved' => $L[$lk]['label'], 'template' => $R[$rk]['label']];
   /* a dismissed field returns when the template's field list changes */
   $state = array_keys($R); sort($state);
-  $renamed = [];
+  $renamed = array_values($moved);
   foreach ($R as $k => $f) {
-    if (isset($L[$k])) continue;
+    if (isset($L[$k]) || isset($moved[$k])) continue;
     if ($na($f)) { $r['notApplicable'][] = $f['label']; continue; }
-    if (isset($moved[$k]) && strtolower($f['type']) === 'variable') {
-      $from = $L[$moved[$k]]['label'];
-      $renamed[] = $moved[$k];
-      $r['findings'][] = cs_finding('renamed', $k, $f['label'], "$from>" . $f['label'], ['type' => $f['type'], 'name' => $f['name'], 'from' => $from, 'fromKey' => $moved[$k], 'mask' => $f['mask'] || $L[$moved[$k]]['mask']]);
-      continue;
-    }
     $r['findings'][] = cs_finding('new', $k, $f['label'], $f['default'] . (int)$f['required'],
       ['type' => $f['type'], 'name' => $f['name'], 'required' => $f['required'], 'default' => $f['shownDefault'],
-       'warn' => !isset($moved[$k]) && cs_required_gap($f), 'mask' => $f['mask']]);
+       'warn' => cs_required_gap($f), 'mask' => $f['mask']]);
   }
   foreach ($L as $k => $f) {
     if (!empty($f['disabled'])) { $r['disabledFields'][] = $f['label']; continue; }
@@ -347,7 +343,7 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
     $r['findings'][] = cs_finding('yours', $k, $f['label'], 'yours|' . implode(',', $state), ['type' => $f['type'], 'name' => $f['name'], 'mask' => $f['mask']]);
   }
   $h = $feedUrl !== '' ? ($history[cs_url_key($feedUrl)] ?? []) : [];
-  $r['findings'] = cs_pair_guesses($r['findings'], $R, $L, $moved, is_array($h) ? $h : []);
+  $r['findings'] = cs_pair_guesses($r['findings'], $R, $L, [], is_array($h) ? $h : []);
   foreach ($R as $k => $f) {
     if (!isset($L[$k]) || $na($f)) continue;
     $l = $L[$k];

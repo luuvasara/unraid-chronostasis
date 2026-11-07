@@ -116,7 +116,7 @@
     var ul = el('ul'); g[1].forEach(function (t) { ul.appendChild(el('li', '', t)); }); d.appendChild(ul);
     return d;
   }
-  var CHOICE_CHECK = 'Start here. These can need something from you: a required field with no default that old settings do not have, a variable with a new target, or a change of image, template address or moderation note.';
+  var CHOICE_CHECK = 'Start here. These can need something from you: a required field with no default that old settings do not have, or a change of image, template address or moderation note.';
   var CHOICE_OTHER = 'Go through these when you want old settings to match the template: new optional fields, fields only you have, and changed defaults.';
   var AUTO_NOTE = 'CA Auto Update Applications updates this image on a schedule and recreates the container from old settings, which stay as they are. A setting renamed by the app could arrive with nobody watching.';
 
@@ -188,6 +188,9 @@
       more.addEventListener('toggle', function () { openOthers[a.name] = more.open; });
       d.appendChild(more);
     }
+    (a.moved || []).forEach(function (m) {
+      d.appendChild(el('p', 'cs-muted', 'Template now maps ' + (m.name || m.type) + ' to ' + m.template + ' (yours: ' + m.saved + '); your setting is kept.'));
+    });
     if ((a.disabledFields || []).length) {
       d.appendChild(el('p', 'cs-muted', 'Turned off in old settings, so not compared: ' + a.disabledFields.join(', ')));
     }

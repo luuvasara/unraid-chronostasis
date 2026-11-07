@@ -35,7 +35,6 @@ Report: the text to copy, with no values in it.
 Counted as something to check:
 
 - A required field with no default that old settings do not have
-- A variable that keeps its name but has a new target
 - A different image, or a saved template address that is gone or not the one Community Applications lists
 - Community Applications moderator comments, deprecated and blacklisted apps
 
@@ -43,6 +42,8 @@ Everything else stays collapsed under Other differences for each app:
 
 - Other fields new in the template, and fields only in old settings
 - Fields whose required flag or default differs
+
+A field that keeps its name and type in the template but sits at another target is not an update: the template author moved it, and your setting keeps working as it is. Chronostasis leaves it alone and mentions it in one line, for reference, such as "Template now maps Media to /movies (yours: /Unite/Media); your setting is kept."
 
 Also shown: ports that do not apply, because the app shares another container's network, and fields you turned off, which are not compared.
 
