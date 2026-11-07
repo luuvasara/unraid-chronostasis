@@ -12,8 +12,16 @@ const CS_TINDEX_FORMAT = 1;
 function cs_tindex_url(): string {
   return getenv('CS_TINDEX_URL') ?: 'https://luuvasara.github.io/unraid-template-history/index.json.gz';
 }
+/* Cached under /var/local/emhttp (RAM, root only), not /tmp: nobody else can plant or swap the file. */
 function cs_tindex_file(): string {
-  return getenv('CS_TINDEX_FILE') ?: (getenv('CS_CACHE') ?: '/tmp/unraid-chronostasis') . '/template-index.json.gz';
+  return getenv('CS_TINDEX_FILE') ?: '/var/local/emhttp/plugins/unraid-chronostasis/template-index.json.gz';
+}
+/* The cache directory, created 0755 if needed, or null when it or the file is a symlink. */
+function cs_tindex_dir(string $file): ?string {
+  $d = dirname($file);
+  if (!is_dir($d)) @mkdir($d, 0755, true);
+  if (!is_dir($d) || is_link($d) || is_link($file)) return null;
+  return $d;
 }
 
 /* Decoded index from gzip bytes, or null when it is not a format this reader knows. */
@@ -29,28 +37,35 @@ function cs_tindex_decode(string $gz): ?array {
 function cs_tindex_load(int $maxAge = 86400, int $timeout = 30): ?array {
   $file = cs_tindex_file(); $etagFile = "$file.etag";
   clearstatcache(true, $file);
+  if (is_link($file) || is_link(dirname($file))) return null;
   $have = is_file($file);
   if ($have && time() - filemtime($file) < $maxAge) {
     $j = cs_tindex_decode((string)@file_get_contents($file));
     if ($j) return $j;
     $have = false;
   }
-  @mkdir(dirname($file), 0755, true);
-  $tmp = "$file." . getmypid(); $fh = @fopen($tmp, 'w'); $etag = '';
+  $dir = cs_tindex_dir($file);
+  $tmp = $dir ? @tempnam($dir, '.tindex') : false; $fh = $tmp ? @fopen($tmp, 'w') : false; $etag = '';
   if ($fh) {
     $old = $have ? trim((string)@file_get_contents($etagFile)) : '';
     $h = curl_init(cs_tindex_url());
     curl_setopt_array($h, [CURLOPT_FILE => $fh, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_CONNECTTIMEOUT => 10,
       CURLOPT_TIMEOUT => $timeout, CURLOPT_USERAGENT => 'unraid-chronostasis', CURLOPT_FAILONERROR => false,
       CURLOPT_HTTPHEADER => $old !== '' ? ["If-None-Match: $old"] : [],
-      CURLOPT_HEADERFUNCTION => function ($c, $l) use (&$etag) { if (stripos($l, 'etag:') === 0) $etag = trim(substr($l, 5)); return strlen($l); }]);
-    $ok = curl_exec($h); $code = (int)curl_getinfo($h, CURLINFO_RESPONSE_CODE); curl_close($h); fclose($fh);
+      CURLOPT_HEADERFUNCTION => function ($handle, string $line) use (&$etag): int {
+        unset($handle);
+        if (stripos($line, 'etag:') === 0) $etag = trim(substr($line, 5));
+        return strlen($line);
+      }]);
+    $ok = curl_exec($h); $code = (int)curl_getinfo($h, CURLINFO_RESPONSE_CODE);
+    if (PHP_VERSION_ID < 80000) curl_close($h); /* a no-op since 8.0, deprecated in 8.5 */
+    fclose($fh);
     if ($ok && $code === 304 && $have) { @unlink($tmp); @touch($file); }
     elseif ($ok && $code === 200 && ($j = cs_tindex_decode((string)@file_get_contents($tmp)))) {
-      @rename($tmp, $file); @file_put_contents($etagFile, $etag);
+      @chmod($tmp, 0644); @rename($tmp, $file); @file_put_contents($etagFile, $etag);
       return $j;
     } else @unlink($tmp);
-  }
+  } elseif ($tmp) @unlink($tmp);
   /* offline, server error, or a bad download: the last good copy, however old */
   return $have || is_file($file) ? cs_tindex_decode((string)@file_get_contents($file)) : null;
 }

@@ -50,4 +50,8 @@ putenv("CS_TINDEX_URL=http://127.0.0.1:$port/index.json.gz");
 t(cs_tindex_load(86400, 2) !== null, 'offline: the last good copy is used');
 unlink("$W/cache/template-index.json.gz");
 t(cs_tindex_load(86400, 2) === null, 'offline with no copy: null, no error');
+@unlink("$W/victim"); touch("$W/victim"); symlink("$W/victim", "$W/cache/template-index.json.gz");
+putenv("CS_TINDEX_URL=http://127.0.0.1:1/none");
+t(cs_tindex_load(86400, 2) === null && filesize("$W/victim") === 0, 'a symlinked cache file is never read or written through');
+unlink("$W/cache/template-index.json.gz"); unlink("$W/victim");
 exit($fail);
