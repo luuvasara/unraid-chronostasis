@@ -25,8 +25,9 @@ scenario() { # name port theme gui
     php -S 127.0.0.1:"$port" -t "$WR" "$HERE/tests/render/router.php" >"$R/php.log" 2>&1 & PIDS+=($!)
   for _ in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$port/" && break; sleep 0.1; done
 }
+# a new profile for each call: the page keeps the walk in localStorage, and one step must not see the last one's answers
 chrome() { google-chrome --headless=new --disable-gpu --no-first-run --no-default-browser-check --hide-scrollbars --no-sandbox \
-             --user-data-dir="$W/chrome-profile" --virtual-time-budget=6000 "$@" 2>/dev/null; }
+             --user-data-dir="$(mktemp -d "$W/chrome-profile.XXXXXX")" --virtual-time-budget=6000 "$@" 2>/dev/null; }
 python3 -I - "$HERE/tests/fixtures/feed.json" "$W/../feed-hostile.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
