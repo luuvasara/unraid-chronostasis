@@ -321,18 +321,29 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
   if ($t['legacy']) { $r['how'] .= ', old template format'; return $r; }
   $L = $t['fields'];
   $na = fn($f) => $t['containerNet'] && strtolower($f['type']) === 'port';
-  /* Same Name and Type at another Target: the template author moved the field. That is not an update of old settings,
-     so it is no finding and nothing changes it; the app lists it once, for reference. */
+  /* Same Name and Type at another Target. A Path, Port or Device: the template author moved it, and the Target is a
+     location the user may have chosen, so it is no finding and nothing changes it; the app lists it once, for reference.
+     A Variable: the Target is the setting name the app reads, so it is a rename, one finding, and the value can move. */
   $moved = cs_moved_fields($R, $L);
   $r['moved'] = [];
-  /* a Device with no Target in the template is one the user fills in: nothing moved, so no line either */
-  foreach ($moved as $rk => $lk) if (strpos($rk, 'device:name:') !== 0 && $R[$rk]['label'] !== $L[$lk]['label'])
-    $r['moved'][] = ['name' => $R[$rk]['name'], 'type' => $R[$rk]['type'], 'saved' => $L[$lk]['label'], 'template' => $R[$rk]['label']];
+  $renamedVar = [];
+  foreach ($moved as $rk => $lk) {
+    if (strtolower($R[$rk]['type']) === 'variable') { $renamedVar[$rk] = $lk; continue; }
+    /* a Device with no Target in the template is one the user fills in: nothing moved, so no line either */
+    if (strpos($rk, 'device:name:') !== 0 && $R[$rk]['label'] !== $L[$lk]['label'])
+      $r['moved'][] = ['name' => $R[$rk]['name'], 'type' => $R[$rk]['type'], 'saved' => $L[$lk]['label'], 'template' => $R[$rk]['label']];
+  }
   /* a dismissed field returns when the template's field list changes */
   $state = array_keys($R); sort($state);
   $renamed = array_values($moved);
   foreach ($R as $k => $f) {
-    if (isset($L[$k]) || isset($moved[$k])) continue;
+    if (isset($L[$k])) continue;
+    if (isset($renamedVar[$k])) {
+      $lk = $renamedVar[$k]; $from = $L[$lk]['label'];
+      $r['findings'][] = cs_finding('renamed', $k, $f['label'], "$from>" . $f['label'], ['type' => $f['type'], 'name' => $f['name'], 'from' => $from, 'fromKey' => $lk, 'mask' => $f['mask'] || $L[$lk]['mask']]);
+      continue;
+    }
+    if (isset($moved[$k])) continue;
     if ($na($f)) { $r['notApplicable'][] = $f['label']; continue; }
     $r['findings'][] = cs_finding('new', $k, $f['label'], $f['default'] . (int)$f['required'],
       ['type' => $f['type'], 'name' => $f['name'], 'required' => $f['required'], 'default' => $f['shownDefault'],
@@ -392,7 +403,7 @@ function cs_diagnosis(array $a, array $f): string {
       elseif (!empty($f['required'])) $t .= ' The template marks it as required.';
       return $t;
     case 'renamed':
-      return 'The template has this field under the same name, with a new target. Old settings still use ' . $f['from'] . '. It may be a rename by the app, and old settings can be the newer side: the template history shows when it changed.';
+      return 'The template has this variable under the same name, with a new target. For a variable the target is the setting name the app reads, so an app that now reads ' . $f['label'] . ' no longer sees your value under ' . $f['from'] . '. Old settings can be the newer side: the template history shows when it changed.';
     case 'yours':
       return 'Old settings have this field and the template does not. You may have added it, the template may have renamed or dropped it, or old settings may be newer than the template.';
     case 'required':

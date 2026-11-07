@@ -97,7 +97,7 @@ function cs_upgrade_ops(array $a, array $answers): array {
     $type = $x['type'] ?? '';
     if ($type === 'renamed' && $f['kind'] === 'renamed') {
       $ops['renames'][$f['fromKey']] = $f['key'];
-      $ops['heads'][$f['key']] = 'Same name in the template, new key';
+      $ops['heads'][$f['key']] = 'Variable renamed in the template, your value moved';
     } elseif ($type === 'same' && in_array($f['kind'], ['new', 'yours'], true)) {
       $p = $by[$x['other'] ?? ''] ?? null;
       if ($p === null || !in_array($p['kind'], ['new', 'yours'], true) || $p['kind'] === $f['kind']) continue;

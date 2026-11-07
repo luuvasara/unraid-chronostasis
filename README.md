@@ -35,6 +35,7 @@ Report: the text to copy, with no values in it.
 Counted as something to check:
 
 - A required field with no default that old settings do not have
+- A variable the template renamed: same name, new target
 - A different image, or a saved template address that is gone or not the one Community Applications lists
 - Community Applications moderator comments, deprecated and blacklisted apps
 
@@ -43,7 +44,9 @@ Everything else stays collapsed under Other differences for each app:
 - Other fields new in the template, and fields only in old settings
 - Fields whose required flag or default differs
 
-A field that keeps its name and type in the template but sits at another target is not an update: the template author moved it, and your setting keeps working as it is. Chronostasis leaves it alone and mentions it in one line, for reference, such as "Template now maps Media to /movies (yours: /Unite/Media); your setting is kept."
+A path, port or device that keeps its name and type in the template but sits at another target is not an update: the target is a location you may have chosen, and your setting keeps working as it is. Chronostasis leaves it alone and mentions it in one line, for reference, such as "Template now maps Media to /movies (yours: /Unite/Media); your setting is kept."
+
+A variable is different. For a variable the target is the setting name the app reads, so when the template renames it, an updated app no longer sees your value under the old name. Chronostasis counts it as something to check and offers to move your value to the new name, or to keep the old variable as it is. Upgrade moves the value by default.
 
 Also shown: ports that do not apply, because the app shares another container's network, and fields you turned off, which are not compared.
 

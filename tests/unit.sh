@@ -17,7 +17,10 @@ snap() { (cd "$T" && find . -type f -printf '%p %s %T@\n' -exec md5sum {} + | so
 BEFORE=$(snap)
 printf '#!/bin/sh\nprintf "alpha\\nchild\\ndup\\nmoved\\ndead\\nmy-homebox.lan-app\\nshape-required-path\\nshape-required-path-default\\nshape-optional-field\\nshape-variable-target\\nshape-default-only\\nshape-pair\\nshape-history\\n"\n' >"$W/docker"; chmod +x "$W/docker"
 printf '%s' '{"cron":{"dockerCronFrequency":"daily"},"global":{"dockerUpdateAll":"no"},"containers":{"alpha":{"name":"alpha","update":true}}}' > "$W/auto.json"
-CS_AUTOUPDATE=$W/auto.json CS_TEMPLATES=$T CS_FCPFEED=$HERE/tests/fixtures/feed.json CS_CACHE=$W/cache CS_RUN=$W/run CS_DOCKER=$W/docker CS_NO_URLCHECK=1 php "$P/scripts/check.php"; RC=$?
+# the fixture feed counts as fresh by its file time, which depends on when the repository was checked out: use a copy made now,
+# and no download address, so a stale checkout can never fall back to the live feed
+cp "$HERE/tests/fixtures/feed.json" "$W/fresh.json"
+CS_FEED_URLS=http://127.0.0.1:9/none CS_AUTOUPDATE=$W/auto.json CS_TEMPLATES=$T CS_FCPFEED=$W/fresh.json CS_CACHE=$W/cache CS_RUN=$W/run CS_DOCKER=$W/docker CS_NO_URLCHECK=1 php "$P/scripts/check.php"; RC=$?
 [ "$RC" = 0 ] && [ -s "$W/cache/report.json" ] && [ -s "$W/cache/templates.json" ] && ok "check writes a report and the template data" || bad "check rc=$RC"
 AFTER=$(snap)
 [ "$BEFORE" = "$AFTER" ] && ok "the saved templates are untouched" || bad "templates changed"
@@ -41,7 +44,7 @@ RC=$?; grep -q 'Could not get the Community' "$W/run2/state.json" && [ "$RC" = 1
 grep -rIl -iE 'python|\.py\b' "$P" && bad "python in the plugin" || ok "no Python in the plugin"
 # status.php gives the page the counts, and the flag behind them, from the report on disk
 J=$(CS_CACHE=$W/cache CS_RUN=$W/run CS_CONFIG=$W/noconfig php "$P/include/status.php")
-python3 -I -c 'import json,sys; c=json.loads(sys.argv[1])["report"]["counts"]; sys.exit(0 if (c["issues"],c["issueApps"])==(6,4) and c["others"]==22 else 1)' "$J" && ok "status.php: 6 to check on 4 apps (no dead address without the status check), 22 other differences" || bad "status.php counts: $J"
+python3 -I -c 'import json,sys; c=json.loads(sys.argv[1])["report"]["counts"]; sys.exit(0 if (c["issues"],c["issueApps"])==(7,5) and c["others"]==22 else 1)' "$J" && ok "status.php: 7 to check on 5 apps (no dead address without the status check), 22 other differences" || bad "status.php counts: $J"
 # a report saved by the version before: field differences stay quiet until the next check
 OLD=$W/oldcache; mkdir -p "$OLD"
 printf '%s' '{"apps":[{"name":"a","confidence":"high","feedUrl":"","savedUrl":"","findings":[{"kind":"new","key":"k","label":"X","fp":"abc"}]}]}' >"$OLD/report.json"

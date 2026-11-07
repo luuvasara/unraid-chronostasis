@@ -31,6 +31,7 @@
     'Include it': 'Adds this key to the upgraded settings.' + APPLY_ONLY,
     'Leave it out': 'Keeps this key out of the upgraded settings and stops asking. Press again to undo.',
     'Leave it as it is': 'Keeps this key as it is and stops asking. Press again to undo.',
+    'Move my value to the new name': 'Upgrade gives your value to the variable under its new name, with the template\'s description and default. This is also what happens if you do not answer.',
     'Yes, same field': 'Treats them as one field: your value goes under the template\'s key in the upgraded settings.' + APPLY_ONLY,
     'No, different, not a rename': 'Treats them as two separate fields and asks about each one on its own.',
     'Compare with another field': 'Shows a list of fields to compare this one with.',
@@ -116,7 +117,7 @@
     var ul = el('ul'); g[1].forEach(function (t) { ul.appendChild(el('li', '', t)); }); d.appendChild(ul);
     return d;
   }
-  var CHOICE_CHECK = 'Start here. These can need something from you: a required field with no default that old settings do not have, or a change of image, template address or moderation note.';
+  var CHOICE_CHECK = 'Start here. These can need something from you: a required field with no default that old settings do not have, a variable the template renamed, or a change of image, template address or moderation note.';
   var CHOICE_OTHER = 'Go through these when you want old settings to match the template: new optional fields, fields only you have, and changed defaults.';
   var AUTO_NOTE = 'CA Auto Update Applications updates this image on a schedule and recreates the container from old settings, which stay as they are. A setting renamed by the app could arrive with nobody watching.';
 
@@ -272,7 +273,7 @@
   var ANSWERS = {
     own: { text: 'It\'s my own', dismiss: true }, report: { text: 'Report it' },
     include: { text: 'Include it' }, leave: { text: 'Leave it out', dismiss: true }, keep: { text: 'Leave it as it is', dismiss: true },
-    same: { text: 'Yes, same field' }, dismissed: { text: 'Dismissed', dismiss: true }
+    same: { text: 'Yes, same field' }, renamed: { text: 'Move my value to the new name' }, dismissed: { text: 'Dismissed', dismiss: true }
   };
   function walkItems() { return walkList.filter(function (it) { return !away[it.f.id]; }); }
   function rejectKey(x, y) { return x.id < y.id ? x.id + '|' + y.id : y.id + '|' + x.id; }
@@ -386,7 +387,7 @@
     walk.hidden = false;
     if (pos >= list2.length) return walkEnd(list2);
     var it = list2[pos], a = it.a, f = it.f, ans = answers[f.id];
-    if (f.kind === 'renamed') { seenRenames[f.id] = a.name + ': ' + f.from + ' to ' + f.label + ': rename the template confirms'; saveWalk(); }
+    if (f.kind === 'renamed') { seenRenames[f.id] = a.name + ': ' + f.from + ' to ' + f.label + ': your value moves to the new name'; saveWalk(); }
     if (resumed) walk.appendChild(el('p', 'cs-muted', 'Picked up where you left off. Your answers are kept in this browser, and they hold names only, no values.'));
     walk.appendChild(el('p', 'cs-muted', (walkOthers ? 'Other difference ' : 'Issue ') + (pos + 1) + ' of ' + list2.length));
     /* a field issue says it in the comparison and the question; the rest keep their text */
@@ -457,6 +458,9 @@
       walk.appendChild(box);
       preview(pv, a, f, null);
       if (f.kind === 'renamed') {
+        /* no answer counts as moving the value (seenRenames); keeping the old variable is the other choice */
+        answerBtn('cs-move', 'Move my value to ' + f.label, !ans || ans.type === 'renamed', function () { setAnswer(f, it, 'renamed'); });
+        answerBtn('cs-keep', 'Keep ' + f.from + ' as it is', ans && ans.type === 'keep', function () { setAnswer(f, it, 'keep'); });
         var mr = el('p', 'cs-map');
         var add = el('button', 'cs-mini', 'Add mapping'); add.type = 'button';
         add.addEventListener('click', function () {

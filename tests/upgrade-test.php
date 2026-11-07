@@ -16,6 +16,7 @@ $report = fn() => cs_apply_dismissed(['apps' => [cs_app(cs_read_template($saved)
 $a = $report()['apps'][0];
 $find = fn($k, $l) => array_values(array_filter($a['findings'], fn($f) => $f['kind'] === $k && $f['label'] === $l))[0] ?? null;
 $answers = [['id' => $find('new', 'MOVIES_DIR')['id'], 'type' => 'same', 'other' => $find('yours', 'MOVIE_DIR')['id']],
+  ['id' => $find('renamed', 'FROM_ADDRESS')['id'], 'type' => 'renamed'],
   ['id' => $find('new', 'LOG_FORMAT')['id'], 'type' => 'include'],
   ['id' => $find('new', '/downloads')['id'], 'type' => 'include'],
   ['id' => $find('yours', 'MY_EXTRA_FLAG')['id'], 'type' => 'own']];
@@ -27,8 +28,13 @@ $b = cs_upgrade_build($saved, $tpl, cs_upgrade_ops($a, $answers));
 $x = simplexml_load_string($b['xml']);
 $cfg = []; foreach ($x->Config as $c) $cfg[(string)$c['Target']] = $c;
 t(isset($cfg['MOVIES_DIR']) && (string)$cfg['MOVIES_DIR'] === '/movies' && !isset($cfg['MOVIE_DIR']), 'a match takes the template key and keeps the value');
-t(!isset($cfg['FROM_ADDRESS']) && (string)$cfg['FROM_EMAIL_ADDRESS'] === 'films@example.com', 'a Variable the template moved stays as saved');
-t(!$find('renamed', 'FROM_ADDRESS') && !$find('new', '/media') && !$find('new', '8181/tcp') && count($a['moved']) === 3, 'moved fields are no findings, listed as moved');
+t(isset($cfg['FROM_ADDRESS']) && (string)$cfg['FROM_ADDRESS'] === 'films@example.com' && !isset($cfg['FROM_EMAIL_ADDRESS']), 'a renamed Variable: the value moves to the new name');
+$tf = array_values(array_filter($tpl['fields'], fn($f) => ($f['Target'] ?? '') === 'FROM_ADDRESS'))[0] ?? [];
+t($tf && (string)$cfg['FROM_ADDRESS']['Name'] === $tf['Name'] && (string)$cfg['FROM_ADDRESS']['Default'] === $tf['Default'] && (string)$cfg['FROM_ADDRESS']['Required'] === $tf['Required'], 'the moved value takes the template name, default and flags');
+t($find('renamed', 'FROM_ADDRESS') && !$find('new', '/media') && !$find('new', '8181/tcp') && count($a['moved']) === 2, 'a moved Path and Port are no findings, listed as moved; the Variable is a rename');
+$kb = cs_upgrade_build($saved, $tpl, cs_upgrade_ops($a, [['id' => $find('renamed', 'FROM_ADDRESS')['id'], 'type' => 'keep']]));
+$kx = []; foreach (simplexml_load_string($kb['xml'])->Config as $c) $kx[(string)$c['Target']] = $c;
+t(!isset($kx['FROM_ADDRESS']) && (string)$kx['FROM_EMAIL_ADDRESS'] === 'films@example.com', 'Keep: the old variable stays as saved');
 t((string)$cfg['LOG_FORMAT'] === 'json', 'Include it takes the template default');
 t((string)$cfg['MY_EXTRA_FLAG'] === '--fast-scan', 'your own field stays');
 t(!isset($cfg['FRESH_OPT']), 'a field you did not include stays out');
@@ -43,7 +49,7 @@ $dump = json_encode($b['rows']);
 t(strpos($dump, 'made-up-secret') === false, 'the rows hold no masked value');
 t($b['rows'][0]['new'][1] === "you fill this in, in Unraid's form", 'the empty required field is the first row');
 $heads = array_column($b['rows'], 'head');
-t(in_array('You answered Yes, same field', $heads, true) && in_array('You answered Include it', $heads, true) && in_array('New, required, no default', $heads, true) && !in_array('Path moved', $heads, true), 'each change has its heading, and no moved field is a change');
+t(in_array('You answered Yes, same field', $heads, true) && in_array('You answered Include it', $heads, true) && in_array('New, required, no default', $heads, true) && in_array('Variable renamed in the template, your value moved', $heads, true) && !in_array('Path moved', $heads, true), 'each change has its heading, and no moved Path is a change');
 $before = md5_file($saved);
 $p = cs_plan_app($a, $tpl, $answers);
 t($p !== null && !$p['blocks'] && md5_file($saved) === $before && !glob("$W/cfg/backups/*"), 'the plan writes nothing');
