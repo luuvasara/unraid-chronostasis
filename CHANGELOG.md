@@ -2,6 +2,9 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.07c
+- A Device the template leaves for you to fill in is not listed as moved.
+
 ## 2026.11.07b
 - A field that keeps its name and type but sits at another target in the template is no longer a difference to work through or upgrade. The template author moved it; your setting is kept as it is. Each one is mentioned in one line under the app, for reference.
 - A variable with a new target is therefore no longer counted as something to check.
