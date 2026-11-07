@@ -94,6 +94,8 @@ t($mvv['findings'] === [] && array_column($mvv['moved'], 'saved') === ['OLD'], '
 t($warned($pair($c('', 'OLD', 'Variable'), [['Name' => '', 'Target' => 'NEW', 'Type' => 'Variable']])) === [], 'an empty Name pairs with nothing');
 $two = $pair($c('Same', 'OLD', 'Variable'), [['Name' => 'Same', 'Target' => 'A', 'Type' => 'Variable'], ['Name' => 'Same', 'Target' => 'B', 'Type' => 'Variable']]);
 t(array_column($two['moved'], 'template') === ['A'] && $kinds($two, 'new') === ['B'], 'one saved field pairs once');
+$dv = $pair($c('Disk 1', '/dev/sda', 'Device'), [['Name' => 'Disk 1', 'Target' => '', 'Type' => 'Device']]);
+t($dv['findings'] === [] && $dv['moved'] === [], 'a Device the template leaves for you to fill in: no finding, no line');
 t($warned($pair('', [$rq + ['Target' => '9000', 'Type' => 'Port', 'Mode' => 'tcp']], ['network' => 'container:vpn'])) === [], 'a required Port of a container-networked app does not apply: no warning');
 t($warned($pair($c('Same', 'K', 'Variable'), [['Name' => 'Same', 'Target' => 'K', 'Type' => 'Variable', 'Required' => 'true']])) === [], 'a field that became required but is there: no warning');
 

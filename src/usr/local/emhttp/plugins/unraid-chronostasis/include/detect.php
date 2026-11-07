@@ -325,7 +325,9 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
      so it is no finding and nothing changes it; the app lists it once, for reference. */
   $moved = cs_moved_fields($R, $L);
   $r['moved'] = [];
-  foreach ($moved as $rk => $lk) $r['moved'][] = ['name' => $R[$rk]['name'], 'type' => $R[$rk]['type'], 'saved' => $L[$lk]['label'], 'template' => $R[$rk]['label']];
+  /* a Device with no Target in the template is one the user fills in: nothing moved, so no line either */
+  foreach ($moved as $rk => $lk) if (strpos($rk, 'device:name:') !== 0 && $R[$rk]['label'] !== $L[$lk]['label'])
+    $r['moved'][] = ['name' => $R[$rk]['name'], 'type' => $R[$rk]['type'], 'saved' => $L[$lk]['label'], 'template' => $R[$rk]['label']];
   /* a dismissed field returns when the template's field list changes */
   $state = array_keys($R); sort($state);
   $renamed = array_values($moved);
