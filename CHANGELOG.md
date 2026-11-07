@@ -2,6 +2,11 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.07e
+- A variable that keeps its name but has a new target in the template is a rename again, counted as something to check: for a variable the target is the setting name the app reads, so an updated app no longer sees your value under the old name.
+- The walk-through offers to move your value to the new name, or to keep the old variable as it is. Upgrade moves the value by default and takes the template's description and default for it.
+- A path, port or device at a new target is still kept as you saved it and mentioned in one line.
+
 ## 2026.11.07d
 - The extra networks warning says them, not it.
 

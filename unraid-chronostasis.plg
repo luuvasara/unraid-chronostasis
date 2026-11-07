@@ -7,7 +7,7 @@
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
   <!ENTITY pkg       "&name;-&version;-x86_64-1.txz">
   <!ENTITY pkgURL    "&gitURL;/packages/&pkg;">
-  <!ENTITY md5       "ed1355e7d0e5ec277595fd8d7487018d">
+  <!ENTITY md5       "d196ba9502cfc7f1421cfa9cd67ff68b">
 ]>
 <!-- Compares saved Docker templates with Community Applications and helps upgrade them through Unraid's form.
      Bump &version; on EVERY change (YYYY.MM.DD plus an optional letter); build.sh fills in &md5; and makes CHANGELOG.md from <CHANGES>, the one place to write the changes.
