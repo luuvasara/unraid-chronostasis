@@ -1,5 +1,5 @@
 <?php
-/* unraid-chronostasis: reader for the template history index (format 1, see the index's FORMAT.md).
+/* unraid-chronostasis: reader for the template history index (formats 1 and 2, see the index's FORMAT.md).
  * The index lists, per template address in the Community Applications feed, every field set the
  * template has had, with the commit time. It answers "which version was this saved copy based on"
  * without asking GitHub for any history. Field keys are the same as cs_field_key().
@@ -7,7 +7,7 @@
  * Downloaded at most once a day, conditionally (ETag). When the download fails the last good copy is
  * used; with no copy at all the reader returns null and callers carry on without base versions. */
 
-const CS_TINDEX_FORMAT = 1;
+const CS_TINDEX_FORMATS = [1, 2]; // 2 adds per-version secret info: masked and secret-like field keys
 
 function cs_tindex_url(): string {
   return getenv('CS_TINDEX_URL') ?: 'https://luuvasara.github.io/unraid-template-history/index.json.gz';
@@ -29,7 +29,7 @@ function cs_tindex_decode(string $gz): ?array {
   $raw = @gzdecode($gz);
   if ($raw === false) return null;
   $j = json_decode($raw, true);
-  if (!is_array($j) || ($j['format'] ?? null) !== CS_TINDEX_FORMAT || !is_array($j['files'] ?? null) || !is_array($j['sets'] ?? null)) return null;
+  if (!is_array($j) || !in_array($j['format'] ?? null, CS_TINDEX_FORMATS, true) || !is_array($j['files'] ?? null) || !is_array($j['sets'] ?? null)) return null;
   return $j;
 }
 
@@ -114,7 +114,29 @@ function cs_tindex_base(array $index, string $url, array $saved): ?array {
   }
   [$time, $sha, $set] = $versions[$best];
   $next = $versions[$best + 1][0] ?? null;
+  $sec = cs_tindex_sec($index, $versions[$best]);
   return ['key' => $k, 'time' => $time, 'until' => $next, 'commit' => $sha, 'set' => $set, 'exact' => $bestScore === 2.0,
     'jaccard' => $bestScore === 2.0 ? 1.0 : round($bestScore, 3), 'later' => count($versions) - 1 - $best, 'versions' => count($versions),
-    'fields' => $index['sets'][$set] ?? []];
+    'fields' => $index['sets'][$set] ?? [], 'secrets' => $sec];
+}
+
+/* Secret info of one version entry: ['m' => masked keys, 's' => secret-like keys, 'x' => secret-like
+ * ExtraParams/PostArgs keys], all empty when the version has none or the index is format 1. */
+function cs_tindex_sec(array $index, array $entry): array {
+  $none = ['m' => [], 's' => [], 'x' => []];
+  $id = $entry[3] ?? null;
+  if (!is_string($id)) return $none;
+  $s = $index['secrets'][$id] ?? null;
+  return is_array($s) ? $s + $none : $none;
+}
+
+/* Secret info of the newest version of a template address, or null when it is not indexed. Callers can
+ * treat the secret-like keys the template does not mask ('s' minus 'm') as passwords. */
+function cs_tindex_secrets(array $index, string $url): ?array {
+  $k = cs_tindex_key($index, $url);
+  if ($k === '') return null;
+  $v = $index['files'][$k];
+  $s = cs_tindex_sec($index, end($v));
+  $s['unmasked'] = array_values(array_diff($s['s'], $s['m']));
+  return $s;
 }

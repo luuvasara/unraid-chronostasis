@@ -14,7 +14,7 @@ $ix = ['format' => 1, 'generated' => 1, 'repos' => ['Own/Repo' => ['main' => str
   'files' => ['Own/Repo/main/t/app.xml' => [[100, 'aaaaaaa', $set($v1)], [200, 'bbbbbbb', $set($v2)], [300, 'ccccccc', $set($v3)]]]];
 $gz = gzencode(json_encode($ix));
 file_put_contents("$W/index.json.gz", $gz);
-file_put_contents("$W/bad.json.gz", gzencode(json_encode(['format' => 2, 'files' => [], 'sets' => []])));
+file_put_contents("$W/bad.json.gz", gzencode(json_encode(['format' => 3, 'files' => [], 'sets' => []])));
 file_put_contents("$W/router.php", '<?php $f = __DIR__ . parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH); if (!is_file($f)) { http_response_code(404); exit; }
 $e = "\"" . md5_file($f) . "\""; header("ETag: $e"); if (($_SERVER["HTTP_IF_NONE_MATCH"] ?? "") === $e) { http_response_code(304); exit; }
 file_put_contents(__DIR__ . "/hits", "x", FILE_APPEND); readfile($f);');
@@ -29,6 +29,20 @@ $b = cs_tindex_base($ix, 'https://raw.githubusercontent.com/own/repo/master/t/ap
 t($b && !$b['exact'] && $b['commit'] === 'aaaaaaa' && $b['jaccard'] === 0.75, 'renamed branch and other case still match; best overlap wins');
 t(cs_tindex_base($ix, 'https://raw.githubusercontent.com/own/repo/main/t/other.xml', $v1) === null, 'an address not in the index gives null');
 t(cs_tindex_base($ix, 'https://example.com/app.xml', $v1) === null, 'a non-GitHub address gives null');
+
+/* format 2: per-version secret info, 4th element of each entry */
+$sec = ['m' => ['variable:PASS'], 's' => ['variable:API_KEY', 'variable:PASS'], 'x' => ['extraparams:env:X_TOKEN']];
+$ix2 = $ix; $ix2['format'] = 2; $ix2['secrets'] = ['5ec0000001' => $sec];
+$ix2['files']['Own/Repo/main/t/app.xml'] = [[100, 'aaaaaaa', $set($v1), null], [200, 'bbbbbbb', $set($v2), '5ec0000001'], [250, 'ddddddd', $set($v2), null], [300, 'ccccccc', $set($v3), '5ec0000001']];
+t(cs_tindex_decode(gzencode(json_encode($ix2))) !== null && cs_tindex_decode(gzencode(json_encode($ix))) !== null, 'formats 1 and 2 are both accepted');
+t(cs_tindex_decode(gzencode(json_encode(['format' => 3, 'files' => [], 'sets' => []]))) === null, 'format 3 is refused');
+$b = cs_tindex_base($ix2, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml', $v2);
+t($b && $b['commit'] === 'ddddddd' && $b['secrets']['m'] === [] && $b['later'] === 1, 'format 2: same set twice, the newest entry wins, its secret info is returned');
+$s = cs_tindex_secrets($ix2, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml');
+t($s && $s['unmasked'] === ['variable:API_KEY'] && $s['x'] === ['extraparams:env:X_TOKEN'], 'newest version: secret-like but unmasked keys are listed');
+$s = cs_tindex_secrets($ix, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml');
+t($s && $s['m'] === [] && $s['unmasked'] === [], 'format 1: empty secret info, no error');
+t(cs_tindex_secrets($ix2, 'https://raw.githubusercontent.com/own/repo/main/t/none.xml') === null, 'secrets of an unknown address: null');
 
 $port = 18000 + getmypid() % 1000;
 $srv = proc_open(['php', '-S', "127.0.0.1:$port", "$W/router.php"], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pp, $W);
