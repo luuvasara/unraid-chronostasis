@@ -31,6 +31,7 @@
     'Include it': 'Adds this key to the upgraded settings.' + APPLY_ONLY,
     'Leave it out': 'Keeps this key out of the upgraded settings and stops asking. Press again to undo.',
     'Leave it as it is': 'Keeps this key as it is and stops asking. Press again to undo.',
+    'Keep the old variable as it is': 'Upgrade leaves the old variable and its value as they are and stops asking. The app may not read it under that name. Press again to undo.',
     'Move my value to the new name': 'Upgrade gives your value to the variable under its new name, with the template\'s description and default. This is also what happens if you do not answer.',
     'Yes, same field': 'Treats them as one field: your value goes under the template\'s key in the upgraded settings.' + APPLY_ONLY,
     'No, different, not a rename': 'Treats them as two separate fields and asks about each one on its own.',
@@ -405,7 +406,7 @@
     function answerBtn(id, text, on, fn) {
       var x = el('button', 'cs-answer' + (on ? ' cs-on' : ''), text); x.type = 'button'; x.id = id;
       x.setAttribute('aria-pressed', on ? 'true' : 'false');
-      x.addEventListener('click', fn); answerRow.appendChild(x);
+      x.addEventListener('click', fn); answerRow.appendChild(x); return x;
     }
     var srcs = [a.feedUrl, a.history, a.support, a.project].filter(safeUrl);
     var why = select('cs-why', reasons, 'Reason'), src = select('cs-src', srcs, 'Source');
@@ -459,8 +460,9 @@
       preview(pv, a, f, null);
       if (f.kind === 'renamed') {
         /* no answer counts as moving the value (seenRenames); keeping the old variable is the other choice */
-        answerBtn('cs-move', 'Move my value to ' + f.label, !ans || ans.type === 'renamed', function () { setAnswer(f, it, 'renamed'); });
-        answerBtn('cs-keep', 'Keep ' + f.from + ' as it is', ans && ans.type === 'keep', function () { setAnswer(f, it, 'keep'); });
+        /* the labels name the variables, so the tooltips come from the plain keys */
+        answerBtn('cs-move', 'Move my value to ' + f.label, !ans || ans.type === 'renamed', function () { setAnswer(f, it, 'renamed'); }).title = TIPS['Move my value to the new name'];
+        answerBtn('cs-keep', 'Keep ' + f.from + ' as it is', ans && ans.type === 'keep', function () { setAnswer(f, it, 'keep'); }).title = TIPS['Keep the old variable as it is'];
         var mr = el('p', 'cs-map');
         var add = el('button', 'cs-mini', 'Add mapping'); add.type = 'button';
         add.addEventListener('click', function () {
