@@ -1,5 +1,5 @@
 <?php
-/* unraid-chronostasis: reader for the template history index (formats 1 and 2, see the index's FORMAT.md).
+/* unraid-chronostasis: reader for the template history index (formats 1 to 3, see the index's FORMAT.md).
  * The index lists, per template address in the Community Applications feed, every field set the
  * template has had, with the commit time. It answers "which version was this saved copy based on"
  * without asking GitHub for any history. Field keys are the same as cs_field_key().
@@ -7,7 +7,7 @@
  * Downloaded at most once a day, conditionally (ETag). When the download fails the last good copy is
  * used; with no copy at all the reader returns null and callers carry on without base versions. */
 
-const CS_TINDEX_FORMATS = [1, 2]; // 2 adds per-version secret info: masked and secret-like field keys
+const CS_TINDEX_FORMATS = [1, 2, 3]; // 2 adds per-version secret info: masked and secret-like field keys; 3 adds the app list (not read here)
 
 function cs_tindex_url(): string {
   return getenv('CS_TINDEX_URL') ?: 'https://luuvasara.github.io/unraid-template-history/index.json.gz';

@@ -14,7 +14,7 @@ $ix = ['format' => 1, 'generated' => 1, 'repos' => ['Own/Repo' => ['main' => str
   'files' => ['Own/Repo/main/t/app.xml' => [[100, 'aaaaaaa', $set($v1)], [200, 'bbbbbbb', $set($v2)], [300, 'ccccccc', $set($v3)]]]];
 $gz = gzencode(json_encode($ix));
 file_put_contents("$W/index.json.gz", $gz);
-file_put_contents("$W/bad.json.gz", gzencode(json_encode(['format' => 3, 'files' => [], 'sets' => []])));
+file_put_contents("$W/bad.json.gz", gzencode(json_encode(['format' => 4, 'files' => [], 'sets' => []])));
 file_put_contents("$W/router.php", '<?php $f = __DIR__ . parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH); if (!is_file($f)) { http_response_code(404); exit; }
 $e = "\"" . md5_file($f) . "\""; header("ETag: $e"); if (($_SERVER["HTTP_IF_NONE_MATCH"] ?? "") === $e) { http_response_code(304); exit; }
 file_put_contents(__DIR__ . "/hits", "x", FILE_APPEND); readfile($f);');
@@ -35,7 +35,9 @@ $sec = ['m' => ['variable:PASS'], 's' => ['variable:API_KEY', 'variable:PASS'], 
 $ix2 = $ix; $ix2['format'] = 2; $ix2['secrets'] = ['5ec0000001' => $sec];
 $ix2['files']['Own/Repo/main/t/app.xml'] = [[100, 'aaaaaaa', $set($v1), null], [200, 'bbbbbbb', $set($v2), '5ec0000001'], [250, 'ddddddd', $set($v2), null], [300, 'ccccccc', $set($v3), '5ec0000001']];
 t(cs_tindex_decode(gzencode(json_encode($ix2))) !== null && cs_tindex_decode(gzencode(json_encode($ix))) !== null, 'formats 1 and 2 are both accepted');
-t(cs_tindex_decode(gzencode(json_encode(['format' => 3, 'files' => [], 'sets' => []]))) === null, 'format 3 is refused');
+$ix3 = $ix2; $ix3['format'] = 3; $ix3['apps'] = ['https://raw.githubusercontent.com/Own/Repo/main/a.xml#Own\'s Repository' => ['name' => 'a', 'removed' => true]];
+t(cs_tindex_decode(gzencode(json_encode($ix3))) !== null, 'format 3 (with the app list) is accepted');
+t(cs_tindex_decode(gzencode(json_encode(['format' => 4, 'files' => [], 'sets' => []]))) === null, 'format 4 is refused');
 $b = cs_tindex_base($ix2, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml', $v2);
 t($b && $b['commit'] === 'ddddddd' && $b['secrets']['m'] === [] && $b['later'] === 1, 'format 2: same set twice, the newest entry wins, its secret info is returned');
 $s = cs_tindex_secrets($ix2, 'https://raw.githubusercontent.com/Own/Repo/main/t/app.xml');
