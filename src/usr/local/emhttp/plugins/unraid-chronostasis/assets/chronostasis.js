@@ -345,11 +345,13 @@
     var cur = answers[f.id], next = cur && cur.type === type ? null : type;
     var was = cur && ANSWERS[cur.type].dismiss, now = next && ANSWERS[next].dismiss;
     if (cur && cur.type === 'same') unmatch(f);
-    if (next) answers[f.id] = { type: next, app: it.a.name, label: f.kind === 'address' || f.kind === 'moderation' ? kindName(f) : f.label }; else delete answers[f.id];
+    if (next) answers[f.id] = { type: next, app: it.a.name, label: answerLabel(f) }; else delete answers[f.id];
     if (was && !now) post({ action: 'restore', id: f.id, fp: f.fp }).then(load);
     if (now && !was) post({ action: 'dismiss', id: f.id, fp: f.fp }).then(load);
     walkDraw();
   }
+  /* what an answer is about: a renamed variable is named by the old settings' variable, the one kept or moved */
+  function answerLabel(f) { return f.kind === 'address' || f.kind === 'moderation' ? kindName(f) : f.kind === 'renamed' ? f.from : f.label; }
   function unmatch(f) {
     var cur = answers[f.id];
     delete away[cur.other];
@@ -804,7 +806,9 @@
     var known = {}, items = {};
     apps.forEach(function (a) { a.findings.concat(a.dismissed || []).forEach(function (f) { known[f.id] = true; items[f.id] = { a: a, f: f }; }); });
     function keep(o) { var out = {}; Object.keys(o || {}).forEach(function (k) { if (known[k]) out[k] = o[k]; }); return out; }
-    answers = keep(s.answers); away = keep(s.away); chosen = keep(s.chosen); seenRenames = keep(s.seenRenames); rejected = s.rejected || {};
+    answers = keep(s.answers);
+    /* answers saved by 2026.11.07e named a renamed variable by its new name */
+    Object.keys(answers).forEach(function (k) { if (items[k] && items[k].f.kind === 'renamed' && answers[k].type !== 'same') answers[k].label = answerLabel(items[k].f); }); away = keep(s.away); chosen = keep(s.chosen); seenRenames = keep(s.seenRenames); rejected = s.rejected || {};
     mappings = (s.mappings || []).filter(function (m) { return answers[m.forId]; });
     (s.picked || []).forEach(function (k) { if (items[k]) picked[k] = items[k]; });
     if (!(s.pos >= 0)) return;

@@ -2,7 +2,7 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "unraid-chronostasis">
   <!ENTITY author    "Chronostasis project">
-  <!ENTITY version   "2026.11.07e">
+  <!ENTITY version   "2026.11.07f">
   <!ENTITY gitURL    "https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
   <!ENTITY pkg       "&name;-&version;-x86_64-1.txz">
@@ -16,6 +16,8 @@
         launch="Settings/Chronostasis" pluginURL="&pluginURL;" support="https://github.com/luuvasara/unraid-chronostasis/issues">
 
 <CHANGES>
+###2026.11.07f
+- The Finish list names the kept variable correctly.
 ###2026.11.07e
 - A variable that keeps its name but has a new target in the template is a rename again, counted as something to check: for a variable the target is the setting name the app reads, so an updated app no longer sees your value under the old name.
 - The walk-through offers to move your value to the new name, or to keep the old variable as it is. Upgrade moves the value by default and takes the template's description and default for it.
