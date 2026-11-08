@@ -2,6 +2,10 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.08a
+- Template history now comes from the Unraid App Chronicle index (luuvasara.github.io/unraid-app-chronicle), rebuilt daily. The previous address no longer serves an index.
+- Reads index formats 1 to 3.
+
 ## 2026.11.07f
 - The Finish list names the kept variable correctly.
 

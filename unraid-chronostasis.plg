@@ -2,12 +2,12 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "unraid-chronostasis">
   <!ENTITY author    "Chronostasis project">
-  <!ENTITY version   "2026.11.07f">
+  <!ENTITY version   "2026.11.08a">
   <!ENTITY gitURL    "https://raw.githubusercontent.com/luuvasara/unraid-chronostasis/main">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
   <!ENTITY pkg       "&name;-&version;-x86_64-1.txz">
   <!ENTITY pkgURL    "&gitURL;/packages/&pkg;">
-  <!ENTITY md5       "e396f4c9bc88f54962fada10a91b0931">
+  <!ENTITY md5       "e404ed7dd7da7631be617e0d62750ba1">
 ]>
 <!-- Compares saved Docker templates with Community Applications and helps upgrade them through Unraid's form.
      Bump &version; on EVERY change (YYYY.MM.DD plus an optional letter); build.sh fills in &md5; and makes CHANGELOG.md from <CHANGES>, the one place to write the changes.
@@ -16,6 +16,9 @@
         launch="Settings/Chronostasis" pluginURL="&pluginURL;" support="https://github.com/luuvasara/unraid-chronostasis/issues">
 
 <CHANGES>
+###2026.11.08a
+- Template history now comes from the Unraid App Chronicle index (luuvasara.github.io/unraid-app-chronicle), rebuilt daily. The previous address no longer serves an index.
+- Reads index formats 1 to 3.
 ###2026.11.07f
 - The Finish list names the kept variable correctly.
 ###2026.11.07e
