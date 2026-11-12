@@ -2,6 +2,14 @@
 
 Copied by the build from the <CHANGES> block of unraid-chronostasis.plg; edit the .plg, not this file.
 
+## 2026.11.12a
+- Hardened against hostile template data: values from the Community Applications feed, the template history index and template files are checked for type, length and characters before they are used, and links must be http or https.
+- The template history index is refused when its download is over 16 MB or it unpacks to over 96 MB (a gzip bomb), and entries that do not fit its format are dropped.
+- The feed download stops at 128 MB. Saved templates over 1 MB, or with a DOCTYPE, are not read.
+- Backups and saved templates are only opened from their own folders, never through a symlink.
+- Moderator comments are shown as plain text, with markup and encoded markup removed.
+- A template field with a double quote in its default, name or target is left out of the upgraded settings, and the Finish step says so: Unraid's form does not escape it there.
+
 ## 2026.11.08a
 - Template history now comes from the Unraid App Chronicle index (luuvasara.github.io/unraid-app-chronicle), rebuilt daily. The previous address no longer serves an index.
 - Reads index formats 1 to 3.
