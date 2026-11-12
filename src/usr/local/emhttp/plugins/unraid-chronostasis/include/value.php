@@ -3,10 +3,10 @@
  * anything. The template comes from the report and the field must be one the report lists for that app, so a request
  * can name neither a file nor a field outside the issues. Mask="true", in the saved copy or in the template, stays
  * hidden. */
+require_once __DIR__ . '/lib.php';
 function cs_template_file(string $file, string $dir): ?string {
-  if ($file !== basename($file) || !preg_match('/^my-.+\.xml$/', $file)) return null;
-  $p = rtrim($dir, '/') . "/$file";
-  return is_file($p) && !is_link($p) ? $p : null;
+  if ($file !== basename($file) || !preg_match('/^my-[^\/\x00-\x1F]+\.xml$/', $file)) return null;
+  return cs_inside(rtrim($dir, '/') . "/$file", $dir);
 }
 /* state: value, hidden, or absent (the file no longer has that field). null: refused. */
 function cs_field_value(array $report, string $app, string $key, string $dir): ?array {
@@ -25,8 +25,8 @@ function cs_field_value(array $report, string $app, string $key, string $dir): ?
   return null;
 }
 function cs_read_value(string $file, string $key): ?array {
-  $raw = @file_get_contents($file);
-  if ($raw === false || $raw === '') return null;
+  $raw = cs_template_text($file);
+  if ($raw === null) return null;
   $prev = libxml_use_internal_errors(true);
   $x = simplexml_load_string($raw, 'SimpleXMLElement', LIBXML_NONET);
   libxml_clear_errors(); libxml_use_internal_errors($prev);

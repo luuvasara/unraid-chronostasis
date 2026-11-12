@@ -13,6 +13,8 @@ function st(string $step, string $error = '', bool $running = true): void {
 function fail(string $msg): void { st('', $msg, false); fwrite(STDERR, "$msg\n"); exit(1); }
 
 $feedUrls = array_filter(explode(' ', getenv('CS_FEED_URLS') ?: 'https://ca.unraid.net/assets/feed/applicationFeed.json https://assets.ca.unraid.net/feed/applicationFeed.json https://raw.githubusercontent.com/Squidly271/AppFeed/master/applicationFeed.json'));
+/* The feed is about 21 MB; a larger download is stopped and a larger copy is not read. CS_FEED_MAX exists for the tests. */
+function feed_max(): int { $v = (int)getenv('CS_FEED_MAX'); return $v > 0 ? $v : 128 << 20; }
 /* conditional download: an unchanged feed costs one small request */
 function get_feed(array $urls, string $cache): ?string {
   $file = "$cache/feed.json"; $etags = cs_read_json("$cache/feed-etag.json");
@@ -21,11 +23,14 @@ function get_feed(array $urls, string $cache): ?string {
     $h = curl_init($u);
     curl_setopt_array($h, [CURLOPT_FILE => $fh, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_CONNECTTIMEOUT => 15, CURLOPT_TIMEOUT => 180,
       CURLOPT_USERAGENT => 'unraid-chronostasis', CURLOPT_FAILONERROR => false,
-      CURLOPT_HTTPHEADER => (is_file($file) && !empty($etags[$u])) ? ['If-None-Match: ' . $etags[$u]] : [],
+      CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
+      CURLOPT_MAXFILESIZE => feed_max(), CURLOPT_NOPROGRESS => false,
+      CURLOPT_XFERINFOFUNCTION => fn($c, $total, $now) => ($total > feed_max() || $now > feed_max()) ? 1 : 0,
+      CURLOPT_HTTPHEADER => (is_file($file) && is_string($etags[$u] ?? null) && preg_match('/^[\x21-\x7E]{1,200}$/', $etags[$u])) ? ['If-None-Match: ' . $etags[$u]] : [],
       CURLOPT_HEADERFUNCTION => function ($c, $l) use (&$etag) { if (stripos($l, 'etag:') === 0) $etag = trim(substr($l, 5)); return strlen($l); }]);
     $ok = curl_exec($h); $code = (int)curl_getinfo($h, CURLINFO_RESPONSE_CODE); curl_close($h); fclose($fh);
     if ($ok && $code === 304) { @unlink($tmp); return $file; }
-    if ($ok && $code === 200 && filesize($tmp) > 1024) {
+    if ($ok && $code === 200 && filesize($tmp) > 1024 && filesize($tmp) <= feed_max()) {
       rename($tmp, $file);
       file_put_contents("$cache/feed-etag.json", json_encode([$u => $etag]));
       return $file;
@@ -36,9 +41,11 @@ function get_feed(array $urls, string $cache): ?string {
 }
 /* Parsed feed, or null. A feed with no field lists at all (the small one Community Applications uses) is no use here. */
 function load_feed(string $file): ?array {
-  $f = json_decode((string)@file_get_contents($file), true);
+  clearstatcache(true, $file);
+  if (!is_file($file) || (int)@filesize($file) > feed_max()) return null;
+  $f = json_decode((string)@file_get_contents($file, false, null, 0, feed_max() + 1), true, 64);
   if (!is_array($f) || empty($f['applist']) || !is_array($f['applist'])) return null;
-  foreach ($f['applist'] as $a) if (!empty($a['Config'])) return $f;
+  foreach ($f['applist'] as $a) if (is_array($a) && !empty($a['Config'])) return $f;
   return null;
 }
 /* Fix Common Problems keeps the raw feed for its daily scan: a copy from the last day saves the download */
@@ -94,7 +101,7 @@ if ($feed === null) {
   if ($feed === null) fail('The Community Applications feed could not be read.');
 }
 $idx = cs_index($feed);
-$stamp = $feed['last_updated'] ?? '';
+$stamp = cs_text($feed['last_updated'] ?? '', 64);
 unset($feed);
 st('Checking the template addresses');
 $urls = [];

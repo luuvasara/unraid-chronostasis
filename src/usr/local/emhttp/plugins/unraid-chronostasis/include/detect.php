@@ -2,7 +2,10 @@
 /* unraid-chronostasis: compares saved Docker templates with the Community Applications feed. Pure functions, no I/O
  * except reading one template file. Values are shown only on your own server; they are never in reports or in anything you copy or paste.
  * This file takes only attributes from a <Config>, and a saved Default only as a hash, never for a Mask="true" field;
- * include/value.php gives the page one field's value on request. */
+ * include/value.php gives the page one field's value on request.
+ * Feed entries and template files are third-party data: cs_feed_app() and cs_read_template() check every value they
+ * keep (lib.php: cs_text, cs_http_url, cs_template_text) and leave out what fails. */
+require_once __DIR__ . '/lib.php';
 
 function cs_url_norm(string $u): string {
   $u = trim($u);
@@ -70,16 +73,16 @@ function cs_pinned(string $saved, string $feed): string {
 }
 /* One saved template, identity only. Returns null when the file is not a template. */
 function cs_read_template(string $file): ?array {
-  $raw = @file_get_contents($file);
-  if ($raw === false || $raw === '') return null;
+  $raw = cs_template_text($file);
+  if ($raw === null) return null;
   $prev = libxml_use_internal_errors(true);
   $x = simplexml_load_string($raw, 'SimpleXMLElement', LIBXML_NONET);
   libxml_clear_errors(); libxml_use_internal_errors($prev);
-  if (!$x || !isset($x->Name)) return null;
+  if (!$x || !isset($x->Name) || count($x->Config) > CS_MAX_FIELDS) return null;
   $fields = [];
   foreach ($x->Config as $c) {
     $a = $c->attributes();
-    $type = (string)($a['Type'] ?? ''); $target = (string)($a['Target'] ?? ''); $name = (string)($a['Name'] ?? ''); $mode = (string)($a['Mode'] ?? '');
+    $type = cs_text((string)($a['Type'] ?? ''), 64); $target = cs_text((string)($a['Target'] ?? ''), 1024); $name = cs_text((string)($a['Name'] ?? ''), 256); $mode = cs_text((string)($a['Mode'] ?? ''), 64);
     $mask = strtolower((string)($a['Mask'] ?? '')) === 'true';
     $fields[cs_field_key($type, $target, $name, $mode)] = [
       'type' => cs_real_type($type), 'label' => cs_field_label($type, $target, $name, $mode), 'name' => $name,
@@ -88,53 +91,95 @@ function cs_read_template(string $file): ?array {
     ];
   }
   return [
-    'name' => (string)$x->Name, 'file' => basename($file), 'stamp' => cs_stamp($file), 'repository' => (string)$x->Repository, 'url' => trim((string)$x->TemplateURL),
-    'support' => trim((string)$x->Support), 'project' => trim((string)$x->Project),
+    'name' => cs_text((string)$x->Name, 255), 'file' => basename($file), 'stamp' => cs_stamp($file), 'repository' => cs_text(trim((string)$x->Repository), 255), 'url' => cs_text(trim((string)$x->TemplateURL), 2048),
+    'support' => cs_http_url((string)$x->Support), 'project' => cs_http_url((string)$x->Project),
     'containerNet' => cs_is_container_net((string)$x->Network, (string)$x->ExtraParams),
     'legacy' => (string)($x->attributes()['version'] ?? '') !== '2' && !isset($x->Config), 'fields' => $fields,
   ];
 }
 
-function cs_feed_fields(array $app): array {
+/* Limits for a Config attribute from the feed: characters, and whether tabs and new lines may stay. A field with a value
+ * over its limit is left out whole: cutting a Target or Default would change what it is. */
+const CS_FEED_ATTRS = ['Name' => [256, false], 'Target' => [1024, false], 'Default' => [8192, true], 'Mode' => [64, false],
+  'Description' => [8192, true], 'Type' => [64, false], 'Display' => [32, false], 'Required' => [16, false], 'Mask' => [16, false]];
+/* The checked attributes of each Config of a feed entry, or [] when it has none or too many. */
+function cs_feed_configs(array $app): array {
   $c = $app['Config'] ?? [];
   if (!is_array($c)) return [];
   if (isset($c['@attributes'])) $c = [$c];
+  if (count($c) > CS_MAX_FIELDS) return [];
   $out = [];
   foreach ($c as $i) {
     $a = is_array($i) ? ($i['@attributes'] ?? null) : null;
     if (!is_array($a)) continue;
-    $type = (string)($a['Type'] ?? ''); $target = (string)($a['Target'] ?? ''); $name = (string)($a['Name'] ?? ''); $mode = (string)($a['Mode'] ?? '');
+    $r = [];
+    foreach (CS_FEED_ATTRS as $k => [$max, $multi]) {
+      $v = $a[$k] ?? '';
+      if (!is_scalar($v) || is_bool($v)) $v = '';
+      $v = (string)$v;
+      if (strlen($v) > 4 * $max) continue 2;
+      $t = cs_text($v, $max + 1, $multi);
+      if ((function_exists('mb_strlen') ? mb_strlen($t, 'UTF-8') : strlen($t)) > $max) continue 2;
+      $r[$k] = $t;
+    }
+    $out[] = $r;
+  }
+  return $out;
+}
+function cs_feed_fields(array $app): array {
+  $out = [];
+  foreach (cs_feed_configs($app) as $a) {
+    $type = $a['Type']; $target = $a['Target']; $name = $a['Name']; $mode = $a['Mode'];
     $mask = strtolower((string)($a['Mask'] ?? '')) === 'true';
     $out[cs_field_key($type, $target, $name, $mode)] = [
       'type' => $type, 'label' => cs_field_label($type, $target, $name, $mode), 'name' => $name,
       'required' => strtolower((string)($a['Required'] ?? '')) === 'true', 'mask' => $mask,
-      'default' => $mask ? '' : sha1((string)($a['Default'] ?? '')), 'shownDefault' => $mask ? '' : (string)($a['Default'] ?? ''),
-      'noDefault' => trim((string)($a['Default'] ?? '')) === '', 'disabled' => cs_is_disabled($type, $name),
+      'default' => $mask ? '' : sha1($a['Default']), 'shownDefault' => $mask ? '' : $a['Default'],
+      'noDefault' => trim($a['Default']) === '', 'disabled' => cs_is_disabled($type, $name),
     ];
   }
   return $out;
 }
 
 /* One app's template in the feed as the upgraded settings need it, field by field: public data, no value of yours. */
+/* Unraid's Add Container form (7.4.0 checked) writes a field's default into an HTML attribute without escaping a double
+ * quote, so a template default such as x" autofocus onfocus="... runs script when the form opens. The upgraded settings
+ * open in that form, so a template field with a double quote in its default, name, target or flags never goes into them:
+ * it is listed in 'quoted' and the Finish step says so. A double quote in a description becomes a single one. */
 function cs_template_data(array $app): array {
-  $c = $app['Config'] ?? [];
-  if (!is_array($c)) $c = [];
-  if (isset($c['@attributes'])) $c = [$c];
-  $f = [];
-  foreach ($c as $i) {
-    $a = is_array($i) ? ($i['@attributes'] ?? null) : null;
-    if (!is_array($a)) continue;
-    $r = [];
-    foreach (['Name', 'Target', 'Default', 'Mode', 'Description', 'Type', 'Display', 'Required', 'Mask'] as $k) $r[$k] = is_scalar($a[$k] ?? null) ? (string)$a[$k] : '';
-    $f[cs_field_key($r['Type'], $r['Target'], $r['Name'], $r['Mode'])] = $r;
+  $f = []; $quoted = [];
+  foreach (cs_feed_configs($app) as $r) {
+    $k = cs_field_key($r['Type'], $r['Target'], $r['Name'], $r['Mode']);
+    $r['Description'] = str_replace('"', "'", $r['Description']);
+    foreach ($r as $v) if (strpos($v, '"') !== false) { $quoted[$k] = cs_field_label($r['Type'], $r['Target'], $r['Name'], $r['Mode']); continue 2; }
+    $f[$k] = $r;
   }
-  return ['webui' => is_string($app['WebUI'] ?? null) ? $app['WebUI'] : '', 'fields' => $f];
+  return ['webui' => cs_text($app['WebUI'] ?? '', 512), 'fields' => $f, 'quoted' => $quoted];
 }
 
+/* One container entry of the feed with only the keys this plugin reads, each checked; null when it has no valid image.
+ * Links that are not http(s) are emptied; the moderator comment becomes plain text. */
+function cs_feed_app($a): ?array {
+  if (!is_array($a) || !empty($a['Plugin']) || !is_string($a['Repository'] ?? null)) return null;
+  $img = trim($a['Repository']);
+  if ($img === '' || strlen($img) > 255 || !preg_match('~^[A-Za-z0-9][A-Za-z0-9._/:@\-]*$~', $img)) return null;
+  $out = ['Repository' => $img, 'Name' => cs_text($a['Name'] ?? '', 200), 'Repo' => cs_text($a['Repo'] ?? '', 200),
+    'Support' => cs_http_url($a['Support'] ?? ''), 'Project' => cs_http_url($a['Project'] ?? ''), 'WebUI' => cs_text($a['WebUI'] ?? '', 512),
+    'Deprecated' => !empty($a['Deprecated']) && $a['Deprecated'] !== 'false', 'Blacklist' => !empty($a['Blacklist']) && $a['Blacklist'] !== 'false',
+    'Config' => array_map(fn($r) => ['@attributes' => $r], cs_feed_configs($a))];
+  foreach (['TemplateURL', 'caTemplateURL'] as $k) if (($u = cs_http_url($a[$k] ?? '')) !== '') $out[$k] = $u;
+  foreach (['ModeratorComment', 'CAComment'] as $k) {
+    if (!is_string($a[$k] ?? null)) continue;
+    /* tags out, entities decoded, and tags out again: &lt;script&gt; must not come back as markup */
+    $t = cs_text(trim(strip_tags(html_entity_decode(strip_tags($a[$k]), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 2000, true);
+    if ($t !== '') $out[$k] = $t;
+  }
+  return $out;
+}
 function cs_index(array $feed): array {
   $idx = ['apps' => [], 'url' => [], 'full' => [], 'base' => []];
-  foreach (($feed['applist'] ?? []) as $a) {
-    if (!is_array($a) || !empty($a['Plugin']) || !is_string($a['Repository'] ?? null)) continue;
+  foreach ((is_array($feed['applist'] ?? null) ? $feed['applist'] : []) as $a) {
+    if (($a = cs_feed_app($a)) === null) continue;
     $i = count($idx['apps']);
     $idx['apps'][] = $a;
     foreach (['TemplateURL', 'caTemplateURL'] as $k) {
@@ -143,8 +188,10 @@ function cs_index(array $feed): array {
     $idx['full'][cs_repo_full($a['Repository'])][] = $i;
     $idx['base'][cs_repo_base($a['Repository'])][] = $i;
   }
-  $idx['deprecated'] = $feed['deprecated'] ?? [];
-  $idx['blacklisted'] = $feed['blacklisted'] ?? [];
+  foreach (['deprecated', 'blacklisted'] as $k) {
+    $idx[$k] = [];
+    foreach ((is_array($feed[$k] ?? null) ? $feed[$k] : []) as $img => $v) $idx[$k][(string)$img] = is_string($v) ? cs_text(strip_tags($v), 2000, true) : $v;
+  }
   return $idx;
 }
 
@@ -308,7 +355,7 @@ function cs_app(array $t, array $idx, ?int $http, array $history = []): array {
   }
   foreach (['ModeratorComment', 'CAComment'] as $f) {
     if (is_string($app[$f] ?? null) && trim($app[$f]) !== '') {
-      $txt = trim(html_entity_decode(strip_tags($app[$f]), ENT_QUOTES));
+      $txt = $app[$f];  /* plain text already: cs_feed_app() */
       $r['findings'][] = cs_finding('moderation', strtolower($f), 'Moderator comment', $txt, ['text' => $txt]);
     }
   }

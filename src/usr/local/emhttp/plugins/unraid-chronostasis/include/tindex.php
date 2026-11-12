@@ -7,6 +7,7 @@
  * Downloaded at most once a day, conditionally (ETag). When the download fails the last good copy is
  * used; with no copy at all the reader returns null and callers carry on without base versions. */
 
+require_once __DIR__ . '/lib.php';
 const CS_TINDEX_FORMATS = [1, 2, 3]; // 2 adds per-version secret info: masked and secret-like field keys; 3 adds the app list (not read here)
 
 function cs_tindex_url(): string {
@@ -24,13 +25,60 @@ function cs_tindex_dir(string $file): ?string {
   return $d;
 }
 
-/* Decoded index from gzip bytes, or null when it is not a format this reader knows. */
+/* Size limits: the download (gzip) and what it may unpack to. The published index is about 1.2 MB and 7 MB. A larger
+ * file, a gzip bomb included, is refused before it is unpacked in full. CS_TINDEX_MAX_GZ / _RAW exist for the tests. */
+function cs_tindex_max(string $what): int {
+  $v = (int)getenv($what === 'gz' ? 'CS_TINDEX_MAX_GZ' : 'CS_TINDEX_MAX_RAW');
+  return $v > 0 ? $v : ($what === 'gz' ? 16 << 20 : 96 << 20);
+}
+/* Decoded index from gzip bytes, or null when it is too large or not a format this reader knows. Every entry is
+ * checked by cs_tindex_clean(); what does not fit the format is dropped, not trusted. */
 function cs_tindex_decode(string $gz): ?array {
-  $raw = @gzdecode($gz);
-  if ($raw === false) return null;
-  $j = json_decode($raw, true);
+  if ($gz === '' || strlen($gz) > cs_tindex_max('gz')) return null;
+  $raw = @gzdecode($gz, cs_tindex_max('raw'));
+  if (!is_string($raw)) return null;
+  $j = json_decode($raw, true, 16);
+  unset($raw);
   if (!is_array($j) || !in_array($j['format'] ?? null, CS_TINDEX_FORMATS, true) || !is_array($j['files'] ?? null) || !is_array($j['sets'] ?? null)) return null;
-  return $j;
+  return cs_tindex_clean($j);
+}
+function cs_tindex_keys($v): bool {
+  if (!is_array($v) || !array_is_list($v) || count($v) > 5000) return false;
+  foreach ($v as $k) if (!is_string($k) || strlen($k) > 1024 || preg_match('/[\x00-\x1F\x7F]/', $k)) return false;
+  return true;
+}
+/* Only the parts this reader uses, each in the shape FORMAT.md gives; '_dropped' counts what was left out. */
+function cs_tindex_clean(array $j): array {
+  $out = ['format' => $j['format'], 'generated' => is_int($j['generated'] ?? null) ? $j['generated'] : 0, 'repos' => [], 'sets' => [], 'secrets' => [], 'files' => [], '_dropped' => 0];
+  $drop = 0;
+  /* a set id of ten decimal digits is an integer array key in PHP: compare it as a string */
+  foreach ($j['sets'] as $id => $keys) {
+    $id = (string)$id;
+    if (preg_match('/^[0-9a-f]{10}$/', $id) && cs_tindex_keys($keys)) $out['sets'][$id] = $keys; else $drop++;
+  }
+  foreach ((is_array($j['secrets'] ?? null) ? $j['secrets'] : []) as $id => $s) {
+    $id = (string)$id;
+    $ok = preg_match('/^[0-9a-f]{10}$/', $id) && is_array($s);
+    if ($ok) foreach (['m', 's', 'x'] as $k) if (!cs_tindex_keys($s[$k] ?? [])) $ok = false;
+    if ($ok) $out['secrets'][$id] = ['m' => $s['m'] ?? [], 's' => $s['s'] ?? [], 'x' => $s['x'] ?? []]; else $drop++;
+  }
+  foreach ((is_array($j['repos'] ?? null) ? $j['repos'] : []) as $name => $heads) {
+    $ok = is_string($name) && preg_match('~^[A-Za-z0-9._-]{1,100}/[A-Za-z0-9._-]{1,100}$~', $name) && is_array($heads);
+    if ($ok) foreach ($heads as $b => $sha) if (!is_string($b) || $b === '' || strlen($b) > 255 || preg_match('/[\x00-\x20\x7F]/', $b) || !is_string($sha) || !preg_match('/^[0-9a-f]{40}$/', $sha)) $ok = false;
+    if ($ok) $out['repos'][$name] = $heads; else $drop++;
+  }
+  foreach ($j['files'] as $k => $versions) {
+    if (!is_string($k) || strlen($k) > 2048 || preg_match('/[\x00-\x1F\x7F]/', $k) || !is_array($versions) || !array_is_list($versions)) { $drop++; continue; }
+    $good = [];
+    foreach (array_slice($versions, -1000) as $e) {
+      if (is_array($e) && array_is_list($e) && in_array(count($e), [3, 4], true) && is_int($e[0]) && $e[0] >= 0 && is_string($e[1]) && preg_match('/^[0-9a-f]{7,40}$/', $e[1])
+          && is_string($e[2]) && isset($out['sets'][$e[2]]) && (!isset($e[3]) || (is_string($e[3]) && isset($out['secrets'][$e[3]])))) $good[] = $e;
+      else $drop++;
+    }
+    if ($good) $out['files'][$k] = $good;
+  }
+  $out['_dropped'] = $drop;
+  return $out;
 }
 
 /* The index, or null. $maxAge: seconds a cached copy is used without asking the server. */
@@ -40,34 +88,39 @@ function cs_tindex_load(int $maxAge = 86400, int $timeout = 30): ?array {
   if (is_link($file) || is_link(dirname($file))) return null;
   $have = is_file($file);
   if ($have && time() - filemtime($file) < $maxAge) {
-    $j = cs_tindex_decode((string)@file_get_contents($file));
+    $j = cs_tindex_decode((string)@file_get_contents($file, false, null, 0, cs_tindex_max('gz') + 1));
     if ($j) return $j;
     $have = false;
   }
   $dir = cs_tindex_dir($file);
   $tmp = $dir ? @tempnam($dir, '.tindex') : false; $fh = $tmp ? @fopen($tmp, 'w') : false; $etag = '';
   if ($fh) {
-    $old = $have ? trim((string)@file_get_contents($etagFile)) : '';
+    $old = $have ? trim((string)@file_get_contents($etagFile, false, null, 0, 256)) : '';
+    if (!preg_match('/^[\x21-\x7E]{1,200}$/', $old)) $old = '';
     $h = curl_init(cs_tindex_url());
     curl_setopt_array($h, [CURLOPT_FILE => $fh, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_CONNECTTIMEOUT => 10,
       CURLOPT_TIMEOUT => $timeout, CURLOPT_USERAGENT => 'unraid-chronostasis', CURLOPT_FAILONERROR => false,
+      CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
+      /* stop a download over the limit while it runs, whatever the server says its size is */
+      CURLOPT_MAXFILESIZE => cs_tindex_max('gz'), CURLOPT_NOPROGRESS => false,
+      CURLOPT_XFERINFOFUNCTION => fn($c, $total, $now) => ($total > cs_tindex_max('gz') || $now > cs_tindex_max('gz')) ? 1 : 0,
       CURLOPT_HTTPHEADER => $old !== '' ? ["If-None-Match: $old"] : [],
       CURLOPT_HEADERFUNCTION => function ($handle, string $line) use (&$etag): int {
         unset($handle);
-        if (stripos($line, 'etag:') === 0) $etag = trim(substr($line, 5));
+        if (stripos($line, 'etag:') === 0 && preg_match('/^[\x21-\x7E]{1,200}$/', trim(substr($line, 5)))) $etag = trim(substr($line, 5));
         return strlen($line);
       }]);
     $ok = curl_exec($h); $code = (int)curl_getinfo($h, CURLINFO_RESPONSE_CODE);
     if (PHP_VERSION_ID < 80000) curl_close($h); /* a no-op since 8.0, deprecated in 8.5 */
     fclose($fh);
     if ($ok && $code === 304 && $have) { @unlink($tmp); @touch($file); }
-    elseif ($ok && $code === 200 && ($j = cs_tindex_decode((string)@file_get_contents($tmp)))) {
+    elseif ($ok && $code === 200 && ($j = cs_tindex_decode((string)@file_get_contents($tmp, false, null, 0, cs_tindex_max('gz') + 1)))) {
       @chmod($tmp, 0644); @rename($tmp, $file); @file_put_contents($etagFile, $etag);
       return $j;
     } else @unlink($tmp);
   } elseif ($tmp) @unlink($tmp);
   /* offline, server error, or a bad download: the last good copy, however old */
-  return $have || is_file($file) ? cs_tindex_decode((string)@file_get_contents($file)) : null;
+  return $have || is_file($file) ? cs_tindex_decode((string)@file_get_contents($file, false, null, 0, cs_tindex_max('gz') + 1)) : null;
 }
 
 /* Index key of a template address, or ''. Exact feed spelling first; then the same owner/repo (any
@@ -101,7 +154,9 @@ function cs_tindex_set_id(array $keys): string {
 function cs_tindex_base(array $index, string $url, array $saved): ?array {
   $k = cs_tindex_key($index, $url);
   if ($k === '') return null;
-  $versions = $index['files'][$k]; $id = cs_tindex_set_id($saved);
+  $versions = $index['files'][$k] ?? [];
+  if (!$versions) return null;
+  $id = cs_tindex_set_id($saved);
   $best = null; $bestScore = -1.0; $S = array_flip($saved);
   foreach ($versions as $i => [$time, $sha, $set]) {
     if ($set === $id) { $score = 2.0; }
@@ -135,7 +190,8 @@ function cs_tindex_sec(array $index, array $entry): array {
 function cs_tindex_secrets(array $index, string $url): ?array {
   $k = cs_tindex_key($index, $url);
   if ($k === '') return null;
-  $v = $index['files'][$k];
+  $v = $index['files'][$k] ?? [];
+  if (!$v) return null;
   $s = cs_tindex_sec($index, end($v));
   $s['unmasked'] = array_values(array_diff($s['s'], $s['m']));
   return $s;

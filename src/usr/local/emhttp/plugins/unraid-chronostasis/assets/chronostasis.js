@@ -59,10 +59,12 @@
     var e = document.createElement(tag);
     if (cls) e.className = cls;
     if (text !== undefined && text !== null) e.textContent = String(text);
-    if (TIPS[text]) e.title = TIPS[text];
+    /* own keys only: a label such as "constructor" or "__proto__" from a template must not reach Object.prototype */
+    if (typeof text === 'string' && Object.prototype.hasOwnProperty.call(TIPS, text)) e.title = TIPS[text];
     return e;
   }
-  function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
+  /* Template and feed links are third-party: http(s) with a host only, no spaces, quotes, angle brackets or controls. */
+  function safeUrl(u) { return typeof u === 'string' && /^https?:\/\/[^\s"'<>\\`\x00-\x1f\x7f]+$/i.test(u) && u.length <= 2048 ? u : ''; }
   function link(u, text) {
     var s = safeUrl(u);
     if (!s) return el('span', '', text);

@@ -7,6 +7,7 @@ W=$HERE/tests/.work/unit; rm -rf "$W"; mkdir -p "$W"
 fail=0; ok() { echo "ok   $*"; }; bad() { echo "FAIL $*"; fail=1; }
 php "$HERE/tests/detect-test.php" || fail=1
 php "$HERE/tests/upgrade-test.php" || fail=1
+php "$HERE/tests/hostile-test.php" || fail=1
 for f in "$P"/include/*.php "$P"/scripts/*.php; do php -l "$f" >/dev/null || bad "php -l $f"; done
 bash -n "$P/scripts/chronostasis" && ok "script syntax"
 command -v shellcheck >/dev/null && { shellcheck -S warning "$P/scripts/chronostasis" "$HERE/build.sh" && ok shellcheck || bad shellcheck; }

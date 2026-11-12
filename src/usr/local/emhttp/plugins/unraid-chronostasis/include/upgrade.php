@@ -16,9 +16,8 @@ function cs_error_file(string $app): string { return rtrim(cs_path('run'), '/') 
 function cs_jobs_file(): string { return rtrim(cs_path('config'), '/') . '/upgrades.json'; }
 function cs_saved_file(array $a): ?string {
   $f = (string)($a['file'] ?? '');
-  if ($f !== basename($f) || !preg_match('/^my-.+\.xml$/', $f)) return null;
-  $p = rtrim(cs_path('templates'), '/') . "/$f";
-  return is_file($p) && !is_link($p) ? $p : null;
+  if ($f !== basename($f) || !preg_match('/^my-[^\/\x00-\x1F]+\.xml$/', $f)) return null;
+  return cs_inside(rtrim(cs_path('templates'), '/') . "/$f", cs_path('templates'));
 }
 
 /* [exit code, stdout, stderr]. rc 127 when the command cannot run. */
@@ -66,8 +65,8 @@ function cs_network_problem(string $network): string {
 }
 
 function cs_xml(string $file): ?DOMDocument {
-  $raw = @file_get_contents($file);
-  if ($raw === false || $raw === '') return null;
+  $raw = cs_template_text($file);
+  if ($raw === null) return null;
   $d = new DOMDocument();
   $prev = libxml_use_internal_errors(true);
   $ok = $d->loadXML($raw, LIBXML_NONET);
@@ -244,6 +243,9 @@ function cs_plan_app(array $a, array $tpl, array $answers): ?array {
   $b = cs_upgrade_build($file, $tpl, $ops);
   if ($b === null) return null;
   [$block, $warn] = cs_plan_live($a, $file);
+  $skip = array_values(array_intersect_key($tpl['quoted'] ?? [], array_flip(array_merge(array_values($ops['renames']), $ops['includes']))));
+  if ($skip) $warn[] = 'Left out of the upgraded settings, because the template has a double quote in them that Unraid\'s form would not handle safely: '
+    . implode(', ', $skip) . '. Add or change these in the form by hand if you need them.';
   return ['name' => $a['name'], 'rows' => $b['rows'], 'own' => $ops['own'], 'left' => $ops['left'], 'warnings' => array_merge($warn, cs_upgrade_warnings($b['xml'])), 'blocks' => $block,
           'pinned' => $a['pinned'] ?? '', 'backupDir' => rtrim(cs_path('config'), '/') . '/backups/' . $a['name'] . '/'];
 }
@@ -317,6 +319,8 @@ function cs_upgrade_retry(string $app, string $which, bool $confirmed = false): 
     $j = &$jobs[$app];
     $saved = rtrim(cs_path('templates'), '/') . '/' . basename((string)$j['file']);
     $open = $which === 'old' ? (string)$j['backup'] : cs_upgrade_file($app);
+    /* a backup is only ever one of this app's own, under the plugin's backups folder */
+    if ($which === 'old' && cs_inside($open, rtrim(cs_path('config'), '/') . "/backups/$app") === null) return ['error' => 'The file is not there any more: ' . $open];
     if ($which === 'upgraded' && !is_file($open)) {
       if (($j['attempt'] ?? '') !== 'upgraded' || !is_file($saved)) return ['error' => 'The upgraded settings are gone: they stay in memory only, until a restart. Work through the issues again.'];
       $open = $saved;
@@ -349,7 +353,7 @@ function cs_gone_backups(array $jobs): array {
 function cs_upgrade_putback(string $app, string $file, bool $confirmed = false): array {
   if (!cs_safe_name($app) || basename($file) !== $file || !preg_match('/^my-.+\.xml$/', $file)) return ['error' => 'invalid app'];
   $open = rtrim(cs_path('config'), '/') . "/backups/$app/$file";
-  if (!is_file($open)) return ['error' => 'The file is not there any more: ' . $open];
+  if (cs_inside($open, rtrim(cs_path('config'), '/') . "/backups/$app") === null) return ['error' => 'The file is not there any more: ' . $open];
   if (!$confirmed && ($w = cs_drop_warnings((string)@file_get_contents($open)))) return ['warn' => $w];
   return cs_jobs_locked(function (array &$jobs) use ($app, $open) {
     $saved = rtrim(cs_path('templates'), '/') . "/my-$app.xml";
